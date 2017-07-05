@@ -5,7 +5,7 @@
 
 public Plugin:myinfo = 
 {
-	name = "[bTimes] - Ranks",
+	name = "[bTimes] Ranks",
 	author = "blacky",
 	description = "Controls server rankings",
 	version = VERSION,
@@ -95,7 +95,7 @@ public OnPluginStart()
 	// Cvars
 	g_hUseCustomChat  = CreateConVar("timer_enablecc", "1", "Allows specific players in sourcemod/configs/timer/custom.cfg to use custom chat.", 0, true, 0.0, true, 1.0);
 	g_hUseChatRanks   = CreateConVar("timer_chatranks", "1", "Allows players to use chat ranks specified in sourcemod/configs/timer/ranks.cfg", 0, true, 0.0, true, 1.0);
-	g_hAllChat        = CreateConVar("timer_allchat", "0", "Enable's allchat", 0, true, 0.0, true, 1.0);
+	g_hAllChat        = CreateConVar("timer_allchat", "1", "Enable's allchat", 0, true, 0.0, true, 1.0);
 	
 	AutoExecConfig(true, "ranks", "timer");
 	
@@ -267,7 +267,6 @@ ReplaceMessage(String:message[], maxlength)
 		ReplaceString(message, maxlength, "^5", "\x05");
 		ReplaceString(message, maxlength, "^6", "\x06");
 		ReplaceString(message, maxlength, "^7", "\x07");
-		ReplaceString(message, maxlength, "^8", "\x10");
 	}
 }
 
@@ -304,6 +303,7 @@ public Action:OnChatMessage(&author, Handle:recipients, String:name[], String:me
 
 FormatTag(client, String:buffer[], maxlength)
 {
+	
 	ReplaceString(buffer, maxlength, "{white}", "\x01", true);
 	ReplaceString(buffer, maxlength, "{red}", "\x02", true);
 	ReplaceString(buffer, maxlength, "{team}", "\x03", true);
@@ -320,6 +320,8 @@ FormatTag(client, String:buffer[], maxlength)
 	ReplaceString(buffer, maxlength, "{bluegrey}", "\x0D", true);
 	ReplaceString(buffer, maxlength, "{pink}", "\x0E", true);
 	ReplaceString(buffer, maxlength, "{lighterred}", "\x0F", true);
+
+
 
 	new rand[3], String:sRandHex[15];
 	while(StrContains(buffer, "{rand}", true) != -1)
@@ -341,39 +343,13 @@ FormatTag(client, String:buffer[], maxlength)
 	}
 }
 
-GetRandomColor()
-{
-	switch(GetRandomInt(1, 16))
-	{
-		case  1: return '\x01';
-		case  2: return '\x02';
-		case  3: return '\x03';
-		case  4: return '\x03';
-		case  5: return '\x04';
-		case  6: return '\x05';
-		case  7: return '\x06';
-		case  8: return '\x07';
-		case  9: return '\x08';
-		case 10: return '\x09';
-		case 11: return '\x10';
-		case 12: return '\x0A';
-		case 13: return '\x0B';
-		case 14: return '\x0C';
-		case 15: return '\x0E';
-		case 16: return '\x0F';
-		default: return '\x01';
-	}
-
-	return '\x01';
-}
-
 GetChatName(client, String:buffer[], maxlength)
 {	
 	if((g_ClientUseCustom[client] & CC_HASCC) && (g_ClientUseCustom[client] & CC_NAME) && GetConVarBool(g_hUseCustomChat))
 	{
 		decl String:sAuth[32];
-		GetClientAuthId(client, AuthId_Engine, sAuth, sizeof(sAuth));
-		
+		//GetClientAuthString(client, sAuth, sizeof(sAuth));
+		GetClientAuthId(client, AuthId_Steam2, sAuth, sizeof(sAuth));
 		
 		new idx = FindStringInArray(g_hCustomSteams, sAuth);
 		if(idx != -1)
@@ -402,7 +378,8 @@ GetChatMessage(client, String:message[], maxlength)
 	if((g_ClientUseCustom[client] & CC_HASCC) && (g_ClientUseCustom[client] & CC_MSGCOL) && GetConVarBool(g_hUseCustomChat))
 	{
 		decl String:sAuth[32];
-		GetClientAuthId(client, AuthId_Engine, sAuth, sizeof(sAuth));
+		//GetClientAuthString(client, sAuth, sizeof(sAuth));
+		GetClientAuthId(client, AuthId_Steam2, sAuth, sizeof(sAuth));
 		
 		new idx = FindStringInArray(g_hCustomSteams, sAuth);
 		if(idx != -1)
@@ -413,6 +390,32 @@ GetChatMessage(client, String:message[], maxlength)
 			Format(message, maxlength, "%s%s", buffer, message);
 		}
 	}
+}
+
+GetRandomColor()
+{
+	switch(GetRandomInt(1, 16))
+	{
+		case  1: return '\x01';
+		case  2: return '\x02';
+		case  3: return '\x03';
+		case  4: return '\x03';
+		case  5: return '\x04';
+		case  6: return '\x05';
+		case  7: return '\x06';
+		case  8: return '\x07';
+		case  9: return '\x08';
+		case 10: return '\x09';
+		case 11: return '\x10';
+		case 12: return '\x0A';
+		case 13: return '\x0B';
+		case 14: return '\x0C';
+		case 15: return '\x0E';
+		case 16: return '\x0F';
+		default: return '\x01';
+	}
+
+	return '\x01';
 }
 
 public Action:SM_RecalcPts(client, args)
@@ -951,7 +954,8 @@ public Action:SM_ColoredName(client, args)
 		if(g_ClientUseCustom[client] & CC_HASCC)
 		{
 			decl String:query[512], String:sAuth[32];
-			GetClientAuthId(client, AuthId_Engine, sAuth, sizeof(sAuth));
+			//GetClientAuthString(client, sAuth, sizeof(sAuth));
+			GetClientAuthId(client, AuthId_Steam2, sAuth, sizeof(sAuth));
 			
 			if(args == 0)
 			{
@@ -1036,7 +1040,9 @@ public Action:SM_ColoredMsg(client, args)
 		if(g_ClientUseCustom[client] & CC_HASCC)
 		{
 			decl String:query[512], String:sAuth[32];
-			GetClientAuthId(client, AuthId_Engine, sAuth, sizeof(sAuth));
+			//GetClientAuthString(client, sAuth, sizeof(sAuth));
+			
+			GetClientAuthId(client, AuthId_Steam2, sAuth, sizeof(sAuth));
 			
 			if(args == 0)
 			{
@@ -1102,30 +1108,19 @@ public Action:SM_Colorhelp(client, args)
 			g_msg_start,
 			g_msg_textcol);
 	}
-	PrintToConsole(client, "\n\n");
-	PrintToConsole(client, "======================== CUSTOM CHAT ========================");
-	PrintToConsole(client, " sm_ccname <arg> to set your name.");
-	PrintToConsole(client, " sm_ccname without an argument to turn colored name off.");
 	
-	PrintToConsole(client, " sm_ccmsg <arg> to set your message.");
-	PrintToConsole(client, " sm_ccmsg without an argument to turn colored message off.");
-	PrintToConsole(client, "====================== Custom chat functions ======================");
-	PrintToConsole(client, " {name} will be replaced with your STEAM name.");
-	PrintToConsole(client, " {team} will be replaced with TEAM color.");
-	PrintToConsole(client, " {white} will be replaced with WHITE color.");
-	PrintToConsole(client, " {red} will be replaced with a RED color.");
-	PrintToConsole(client, " {green} will be replaced with a GREEN color.");
-	PrintToConsole(client, " {lime} will be replaced with a LIME color.");
-	PrintToConsole(client, " {lightgreen} will be replaced with a LIGHTGREEN color.");
-	PrintToConsole(client, " {lightred} will be replaced with a LIGHTRED color.");
-	PrintToConsole(client, " {gray} will be replaced with a GRAY color.");
-	PrintToConsole(client, " {lightolive} will be replaced with a LIGHTOLIVE color.");
-	PrintToConsole(client, " {olive} will be replaced with a OLIVE color.");
-	PrintToConsole(client, " {lightblue} will be replaced with a LIGHTBLUE color.");
-	PrintToConsole(client, " {blue} will be replaced with a BLUE color.");
-	PrintToConsole(client, " {purple} will be replaced with PURPLE color.");
-	PrintToConsole(client, "===========================================================");
-	PrintToConsole(client, "\n\n");
+	PrintToConsole(client, "\nsm_ccname <arg> to set your name.");
+	PrintToConsole(client, "sm_ccname without an argument to turn colored name off.\n");
+	
+	PrintToConsole(client, "sm_ccmsg <arg> to set your message.");
+	PrintToConsole(client, "sm_ccmsg without an argument to turn colored message off.\n");
+	
+	PrintToConsole(client, "Custom chat functions:");
+	PrintToConsole(client, "'^' followed by a hexadecimal code to use any custom color.");
+	PrintToConsole(client, "{name} will be replaced with your steam name.");
+	PrintToConsole(client, "{team} will be replaced with your team color.");
+	PrintToConsole(client, "{rand} will be replaced with a random color.");
+	PrintToConsole(client, "{norm} will be replaced with normal chat-yellow color.\n");
 	
 	return Plugin_Handled;
 }
@@ -1146,7 +1141,7 @@ public Action:SM_EnableCC(client, args)
 	decl String:sArg[256];
 	GetCmdArgString(sArg, sizeof(sArg));
 	
-	if(StrContains(sArg, "STEAM_1:") != -1)
+	if(StrContains(sArg, "STEAM_0:") != -1)
 	{
 		decl String:query[256];
 		FormatEx(query, sizeof(query), "SELECT User, ccuse FROM players WHERE SteamID='%s'",
@@ -1160,7 +1155,7 @@ public Action:SM_EnableCC(client, args)
 	}
 	else
 	{
-		ReplyToCommand(client, "sm_enablecc example: \"sm_enablecc STEAM_1:1:12345\"",
+		ReplyToCommand(client, "sm_enablecc example: \"sm_enablecc STEAM_0:1:12345\"",
 			g_msg_start,
 			g_msg_textcol);
 	}
@@ -1245,7 +1240,8 @@ EnableCustomChat(const String:sAuth[])
 	{
 		if(IsClientInGame(client))
 		{
-			GetClientAuthId(client, AuthId_Engine, sAuth2, sizeof(sAuth2));
+			//GetClientAuthString(client, sAuth2, sizeof(sAuth2));
+			GetClientAuthId(client, AuthId_Steam2, sAuth2, sizeof(sAuth2));
 			if(StrEqual(sAuth, sAuth2))
 			{
 				g_ClientUseCustom[client]  = CC_HASCC|CC_MSGCOL|CC_NAME;
@@ -1260,14 +1256,14 @@ EnableCustomChat(const String:sAuth[])
 	}
 	
 	decl String:query[512];
-	FormatEx(query, sizeof(query), "UPDATE players SET ccuse=%d, ccname='{red}{name}', ccmsgcol='{lime}' WHERE SteamID='%s'",
+	FormatEx(query, sizeof(query), "UPDATE players SET ccuse=%d, ccname='{rand}{name}', ccmsgcol='^FFFFFF' WHERE SteamID='%s'",
 		CC_HASCC|CC_MSGCOL|CC_NAME,
 		sAuth);
 	SQL_TQuery(g_DB, EnableCC_Callback, query);
 	
 	PushArrayString(g_hCustomSteams, sAuth);
-	PushArrayString(g_hCustomNames, "{red}{name}");
-	PushArrayString(g_hCustomMessages, "{lime}");
+	PushArrayString(g_hCustomNames, "{rand}{name}");
+	PushArrayString(g_hCustomMessages, "{default}");
 	PushArrayCell(g_hCustomUse, CC_HASCC|CC_MSGCOL|CC_NAME);
 }
 
@@ -1284,7 +1280,7 @@ public Action:SM_DisableCC(client, args)
 	decl String:sArg[256];
 	GetCmdArgString(sArg, sizeof(sArg));
 	
-	if(StrContains(sArg, "STEAM_1:") != -1)
+	if(StrContains(sArg, "STEAM_0:") != -1)
 	{
 		decl String:query[256];
 		FormatEx(query, sizeof(query), "SELECT User, ccuse FROM players WHERE SteamID='%s'",
@@ -1298,7 +1294,7 @@ public Action:SM_DisableCC(client, args)
 	}
 	else
 	{
-		CPrintToChat(client, "%s%ssm_disablecc example: \"sm_disablecc STEAM_1:1:12345\"",
+		CPrintToChat(client, "%s%ssm_disablecc example: \"sm_disablecc STEAM_0:1:12345\"",
 			g_msg_start,
 			g_msg_textcol);
 	}
@@ -1390,7 +1386,8 @@ DisableCustomChat(const String:sAuth[])
 	{
 		if(IsClientInGame(client))
 		{
-			GetClientAuthId(client, AuthId_Engine, sAuth2, sizeof(sAuth2));
+			//GetClientAuthString(client, sAuth2, sizeof(sAuth2));
+			GetClientAuthId(client, AuthId_Steam2, sAuth2, sizeof(sAuth2));
 			if(StrEqual(sAuth, sAuth2))
 			{
 				g_ClientUseCustom[client]  = 0;
@@ -1478,19 +1475,19 @@ public Menu_CCList(Handle:menu, MenuAction:action, param1, param2)
 		decl String:expInfo[5][256];
 		ExplodeString(info, "\%", expInfo, 5, 256);
 		ReplaceString(expInfo[2], 256, "{name}", expInfo[1]);
-		ReplaceString(expInfo[2], 256, "{white}", "\x01");
+		ReplaceString(expInfo[2], 256, "{team}", "\x03");
 		ReplaceString(expInfo[2], 256, "^", "\x07");
 
 		ReplaceString(expInfo[3], 256, "^", "\x07");
 		
-		CPrintToChat(param1, " %sSteamID: %s%s", g_msg_textcol, g_msg_varcol, expInfo[0]);
-		CPrintToChat(param1, " %sName: %s%s", g_msg_textcol, g_msg_varcol, expInfo[1]);
-		CPrintToChat(param1, " %sCCName: %s%s", g_msg_textcol, g_msg_varcol, expInfo[2]);
-		CPrintToChat(param1, " %sCCMessage: %s%s", g_msg_textcol, g_msg_varcol, expInfo[3]);
+		CPrintToChat(param1, "%sSteamID          : %s%s", g_msg_textcol, g_msg_varcol, expInfo[0]);
+		CPrintToChat(param1, "%sName               : %s%s", g_msg_textcol, g_msg_varcol, expInfo[1]);
+		CPrintToChat(param1, "%sCCName          : %s%s", g_msg_textcol, g_msg_varcol, expInfo[2]);
+		CPrintToChat(param1, "%sCCMessage      : %s%sExample text", g_msg_textcol, g_msg_varcol, expInfo[3]);
 		
 		new ccuse = StringToInt(expInfo[4]);
-		CPrintToChat(param1, " %sUses CC Name: %s%s", g_msg_textcol, g_msg_varcol, (ccuse & CC_NAME)?"Yes":"No");
-		CPrintToChat(param1, " %sUses CC Msg: %s%s", g_msg_textcol, g_msg_varcol, (ccuse & CC_MSGCOL)?"Yes":"No");
+		CPrintToChat(param1, "%sUses CC Name: %s%s", g_msg_textcol, g_msg_varcol, (ccuse & CC_NAME)?"Yes":"No");
+		CPrintToChat(param1, "%sUses CC Msg   : %s%s", g_msg_textcol, g_msg_varcol, (ccuse & CC_MSGCOL)?"Yes":"No");
 	}
 	else if (action == MenuAction_End)
 		CloseHandle(menu);
@@ -1507,7 +1504,7 @@ public Action:SM_Rankings(client, args)
 		GetArrayString(g_hChatRanksNames, i, sChatRank, MAXLENGTH_NAME);
 		FormatTag(client, sChatRank, MAXLENGTH_NAME);
 		
-		CPrintToChat(client, " %s%5d %s-%s%5d%s: %s",
+		CPrintToChat(client, "%s%5d %s-%s %5d%s: %s",
 			g_msg_varcol,
 			GetArrayCell(g_hChatRanksRanges, i, 0),
 			g_msg_textcol,
@@ -1569,7 +1566,7 @@ LoadChatRanks()
 	ClearArray(g_hChatRanksNames);
 	
 	// Read file lines and get chat ranks and ranges out of them
-	new String:line[PLATFORM_MAX_PATH], String:oldLine[PLATFORM_MAX_PATH], String:sRange[PLATFORM_MAX_PATH], String:sName[PLATFORM_MAX_PATH], String:expRange[2][128];
+	decl String:line[PLATFORM_MAX_PATH], String:oldLine[PLATFORM_MAX_PATH], String:sRange[PLATFORM_MAX_PATH], String:sName[PLATFORM_MAX_PATH], String:expRange[2][128];
 	new idx, Range[2];
 	
 	new Handle:hFile = OpenFile(sPath, "r");
@@ -1934,10 +1931,10 @@ public DB_ShowMapsLeft_Callback(Handle:owner, Handle:hndl, String:error[], any:d
 		if(client != 0)
 		{
 			new rows = SQL_GetRowCount(hndl), count;
-			new String:mapname[128];
+			decl String:mapname[128];
 			new Handle:menu = CreateMenu(Menu_ShowMapsleft);
 			
-			new String:sType[32];
+			decl String:sType[32];
 			if(Type != ALL)
 			{
 				GetTypeName(Type, sType, sizeof(sType));
@@ -1946,7 +1943,7 @@ public DB_ShowMapsLeft_Callback(Handle:owner, Handle:hndl, String:error[], any:d
 				AddSpaceToEnd(sType, sizeof(sType));
 			}
 			
-			new String:sStyle[32];
+			decl String:sStyle[32];
 			if(Style != ALL)
 			{
 				GetStyleName(Style, sStyle, sizeof(sStyle));
@@ -2094,7 +2091,7 @@ public Menu_ShowMapsdone_Callback(Handle:owner, Handle:hndl, String:error[], any
 	   
 		new rows = SQL_GetRowCount(hndl);
 		
-		new String:sType[32];
+		decl String:sType[32];
 		if(Type != ALL)
 		{
 			GetTypeName(Type, sType, sizeof(sType));
@@ -2103,7 +2100,7 @@ public Menu_ShowMapsdone_Callback(Handle:owner, Handle:hndl, String:error[], any
 			AddSpaceToEnd(sType, sizeof(sType));
 		}
 		
-		new String:sStyle[32];
+		decl String:sStyle[32];
 		if(Style != ALL)
 		{
 			GetStyleName(Style, sStyle, sizeof(sStyle));
@@ -2603,7 +2600,7 @@ public LoadRankList_Callback(Handle:owner, Handle:hndl, const String:error[], an
 			}
 		}
 		
-		new String:sName[MAX_NAME_LENGTH], PlayerID, Float:Points, Type, Style, iSize;
+		decl String:sName[MAX_NAME_LENGTH], PlayerID, Float:Points, Type, Style, iSize;
 		
 		while(SQL_FetchRow(hndl))
 		{

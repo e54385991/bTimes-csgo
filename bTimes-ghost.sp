@@ -176,18 +176,12 @@ public OnMapStart()
 				g_GhostPlayerID[Type][Style] = 0;
 				g_bGhostLoaded[Type][Style] = false;
 				
-				decl String:sNameStart[64];
-				if(Type == TIMER_MAIN)
-				{
-					GetStyleName(Style, sNameStart, sizeof(sNameStart));
-				}
-				else
-				{
-					GetTypeName(Type, sNameStart, sizeof(sNameStart));
-					GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
-				}
+				decl String:sType[32], String:sStyle[32];
+				GetTypeName(Type, sType, sizeof(sType), true);
 				
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - No record", sNameStart);
+				GetStyleName(Style, sStyle, sizeof(sStyle));
+				
+				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
 				
 			}
 		}
@@ -296,18 +290,12 @@ public OnPlayerIDLoaded(client)
 					decl String:sTime[32];
 					FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
 					
-					decl String:sNameStart[64];
-					if(Type == TIMER_MAIN)
-					{
-						GetStyleName(Style, sNameStart, sizeof(sNameStart));
-					}
-					else
-					{
-						GetTypeName(Type, sNameStart, sizeof(sNameStart));
-						GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
-					}
+					decl String:sType[32], String:sStyle[32];
+					GetTypeName(Type, sType, sizeof(sType), true);
+				
+					GetStyleName(Style, sStyle, sizeof(sStyle));
 					
-					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
 				}
 			}
 		}
@@ -666,17 +654,11 @@ public LoadGhost_Callback(Handle:owner, Handle:hndl, String:error[], any:data)
 				decl String:sTime[32];
 				FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
 				
-				decl String:sNameStart[64];
-				if(Type == TIMER_MAIN)
-				{
-					GetStyleName(Style, sNameStart, sizeof(sNameStart));
-				}
-				else
-				{
-					GetTypeName(Type, sNameStart, sizeof(sNameStart));
-					GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
-				}
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
+				decl String:sType[32], String:sStyle[32];
+				GetTypeName(Type, sType, sizeof(sType), true);
+							
+				GetStyleName(Style, sStyle, sizeof(sStyle));
+				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
 			}
 			
 			g_bGhostLoaded[Type][Style] = true;
@@ -755,17 +737,11 @@ SaveGhost(client, Float:Time, Type, Style)
 	decl String:sTime[32];
 	FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
 	
-	decl String:sNameStart[64];
-	if(Type == TIMER_MAIN)
-	{
-		GetStyleName(Style, sNameStart, sizeof(sNameStart));
-	}
-	else
-	{
-		GetTypeName(Type, sNameStart, sizeof(sNameStart));
-		GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
-	}
-	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
+	decl String:sType[32], String:sStyle[32];
+	GetTypeName(Type, sType, sizeof(sType), true);
+				
+	GetStyleName(Style, sStyle, sizeof(sStyle));
+	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
 }
 
 DeleteGhost(Type, Style)
@@ -782,18 +758,12 @@ DeleteGhost(Type, Style)
 		g_fGhostTime[Type][Style] = 0.0;
 		ClearArray(g_hGhost[Type][Style]);
 		
-		decl String:sNameStart[64];
-		if(Type == TIMER_MAIN)
-		{
-			GetStyleName(Style, sNameStart, sizeof(sNameStart));
-		}
-		else
-		{
-			GetTypeName(Type, sNameStart, sizeof(sNameStart));
-			GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
-		}
+		decl String:sType[32], String:sStyle[32];
+		GetTypeName(Type, sType, sizeof(sType), true);
+				
+		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
-		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - No record", sNameStart);
+		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
 		CS_RespawnPlayer(g_Ghost[Type][Style]);
 	}
 }
