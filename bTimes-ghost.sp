@@ -51,7 +51,6 @@ new 	Float:g_fStartTime[MAX_TYPES][MAX_STYLES];
 
 // Cvars
 new	Handle:g_hGhostClanTag[MAX_TYPES][MAX_STYLES],
-	Handle:g_hGhostWeapon[MAX_TYPES][MAX_STYLES],
 	Handle:g_hGhostStartPauseTime,
 	Handle:g_hGhostEndPauseTime;
 	
@@ -88,10 +87,6 @@ public OnPluginStart()
 	
 	AutoExecConfig(true, "ghost", "timer");
 	
-	// Events
-	HookEvent("player_changename", Event_PlayerChangeName);
-	HookEvent("player_spawn", Event_PlayerSpawn);
-	
 	// Timers
 	CreateTimer(0.1, UpdateHUD_Timer, INVALID_HANDLE, TIMER_REPEAT);
 	
@@ -125,36 +120,14 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 }
 
 public OnStylesLoaded()
-{
-	decl String:sTypeAbbr[8], String:sType[16], String:sStyleAbbr[8], String:sStyle[16], String:sTypeStyleAbbr[24], String:sCvar[32], String:sDesc[128], String:sValue[32];
-	
+{	
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
-		GetTypeName(Type, sType, sizeof(sType));
-		GetTypeAbbr(Type, sTypeAbbr, sizeof(sTypeAbbr));
-		
 		for(new Style; Style < MAX_STYLES; Style++)
 		{
 			// Don't create cvars for styles on bonus except normal style
 			if(Style_CanUseReplay(Style, Type))
 			{
-				GetStyleName(Style, sStyle, sizeof(sStyle));
-				GetStyleAbbr(Style, sStyleAbbr, sizeof(sStyleAbbr));
-				
-				Format(sTypeStyleAbbr, sizeof(sTypeStyleAbbr), "%s%s", sTypeAbbr, sStyleAbbr);
-				StringToUpper(sTypeStyleAbbr);
-				
-				Format(sCvar, sizeof(sCvar), "timer_ghosttag_%s%s", sTypeAbbr, sStyleAbbr);
-				Format(sDesc, sizeof(sDesc), "The replay bot's clan tag for the scoreboard (%s style on %s timer)", sStyle, sType);
-				Format(sValue, sizeof(sValue), "Ghost :: %s", sTypeStyleAbbr);
-				g_hGhostClanTag[Type][Style] = CreateConVar(sCvar, sValue, sDesc);
-				
-				Format(sCvar, sizeof(sCvar), "timer_ghostweapon_%s%s", sTypeAbbr, sStyleAbbr);
-				Format(sDesc, sizeof(sDesc), "The weapon the replay bot will always use (%s style on %s timer)", sStyle, sType);
-				g_hGhostWeapon[Type][Style] = CreateConVar(sCvar, "weapon_glock", sDesc, 0, true, 0.0, true, 1.0);
-				
-				HookConVarChange(g_hGhostWeapon[Type][Style], OnGhostWeaponChanged);
-				
 				g_hGhost[Type][Style] = CreateArray(6);
 			}
 		}
@@ -202,7 +175,20 @@ public OnMapStart()
 				g_GhostFrame[Type][Style] = 0;
 				g_GhostPlayerID[Type][Style] = 0;
 				g_bGhostLoaded[Type][Style] = false;
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "No record");
+				
+				decl String:sNameStart[64];
+				if(Type == TIMER_MAIN)
+				{
+					GetStyleName(Style, sNameStart, sizeof(sNameStart));
+				}
+				else
+				{
+					GetTypeName(Type, sNameStart, sizeof(sNameStart));
+					GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
+				}
+				
+				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - No record", sNameStart);
+				
 			}
 		}
 	}
@@ -238,23 +224,6 @@ public OnUseGhostChanged(Handle:convar, const String:oldValue[], const String:ne
 	CalculateBotQuota();
 }
 
-public OnGhostWeaponChanged(Handle:convar, const String:oldValue[], const String:newValue[])
-{
-	for(new Type; Type < MAX_TYPES; Type++)
-	{
-		for(new Style; Style < MAX_STYLES; Style++)
-		{
-			if(0 < g_Ghost[Type][Style] <= MaxClients && Style_CanUseReplay(Style, Type))
-			{
-				if(g_hGhostWeapon[Type][Style] == convar)
-				{
-					CheckWeapons(Type, Style);
-				}
-			}
-		}
-	}
-}
-
 public OnMapEnd()
 {
 	// Remove ghost to get a clean start next map
@@ -271,11 +240,7 @@ public OnMapEnd()
 
 public OnClientPutInServer(client)
 {
-	if(IsFakeClient(client))
-	{
-		SDKHook(client, SDKHook_WeaponCanUse, Hook_WeaponCanUse);
-	}
-	else
+	if(!IsFakeClient(client))
 	{
 		// Reset player recorded movement
 		if(g_bUsedFrame[client] == false)
@@ -331,10 +296,18 @@ public OnPlayerIDLoaded(client)
 					decl String:sTime[32];
 					FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
 					
-					decl String:sName[20];
-					GetClientName(client, sName, sizeof(sName));
+					decl String:sNameStart[64];
+					if(Type == TIMER_MAIN)
+					{
+						GetStyleName(Style, sNameStart, sizeof(sNameStart));
+					}
+					else
+					{
+						GetTypeName(Type, sNameStart, sizeof(sNameStart));
+						GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
+					}
 					
-					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sName, sTime);
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
 				}
 			}
 		}
@@ -401,109 +374,6 @@ public OnTimesDeleted(Type, Style, RecordOne, RecordTwo, Handle:Times)
 				break;
 			}
 		}
-	}
-}
-
-public Action:Event_PlayerChangeName(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	
-	if(IsClientInGame(client))
-	{
-		new PlayerID = GetPlayerID(client);
-		
-		if(PlayerID != 0)
-		{
-			for(new Type; Type < MAX_TYPES; Type++)
-			{
-				for(new Style; Style < MAX_STYLES; Style++)
-				{
-					if(Style_CanUseReplay(Style, Type))
-					{
-						if(PlayerID == g_GhostPlayerID[Type][Style])
-						{
-							decl String:sNewName[20];
-							GetEventString(event, "newname", sNewName, sizeof(sNewName));
-							
-							new Handle:pack;
-							CreateDataTimer(0.1, Timer_ChangeName, pack);
-							WritePackCell(pack, Type);
-							WritePackCell(pack, Style);
-							WritePackString(pack, sNewName);
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-public Action:Timer_ChangeName(Handle:timer, Handle:data)
-{
-	ResetPack(data);
-	
-	new Type  = ReadPackCell(data);
-	new Style = ReadPackCell(data);
-	
-	decl String:sName[MAX_NAME_LENGTH];
-	ReadPackString(data, sName, sizeof(sName));
-	
-	decl String:sTime[32];
-	FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
-	
-	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sName, sTime);
-}
-
-public Action:Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	
-	if(IsFakeClient(client))
-	{
-		for(new Type; Type < MAX_TYPES; Type++)
-		{
-			for(new Style; Style < MAX_STYLES; Style++)
-			{
-				if(Style_CanUseReplay(Style, Type))
-				{
-					if(g_Ghost[Type][Style] == client)
-					{
-						CreateTimer(0.1, Timer_CheckWeapons, client);
-					}
-				}
-			}
-		}
-	}
-}
-
-public Action:Timer_CheckWeapons(Handle:timer, any:client)
-{
-	for(new Type; Type < MAX_TYPES; Type++)
-	{
-		for(new Style; Style < MAX_STYLES; Style++)
-		{
-			if(Style_CanUseReplay(Style, Type))
-			{
-				if(g_Ghost[Type][Style] == client)
-				{
-					CheckWeapons(Type, Style);
-				}
-			}
-		}
-	}
-}
-
-CheckWeapons(Type, Style)
-{
-	for(new i = 0; i < 8; i++)
-	{
-		FakeClientCommand(g_Ghost[Type][Style], "drop");
-		
-		decl String:sWeapon[32];
-		GetConVarString(g_hGhostWeapon[Type][Style], sWeapon, sizeof(sWeapon));
-		
-		g_bNewWeapon = true;
-		GivePlayerItem(g_Ghost[Type][Style], sWeapon);
 	}
 }
 
@@ -586,6 +456,8 @@ public Action:GhostCheck(Handle:timer, any:data)
 						CS_GetClientClanTag(g_Ghost[Type][Style], sClanTag, sizeof(sClanTag));
 						GetConVarString(g_hGhostClanTag[Type][Style], sCvarClanTag, sizeof(sCvarClanTag));
 						
+						FakeClientCommand(g_Ghost[Type][Style], "drop");
+						
 						if(!StrEqual(sCvarClanTag, sClanTag))
 						{
 							CS_SetClientClanTag(g_Ghost[Type][Style], sCvarClanTag);
@@ -643,16 +515,6 @@ public Action:GhostCheck(Handle:timer, any:data)
 									}
 								}
 							}
-						}
-						
-						new weaponIndex = GetEntPropEnt(g_Ghost[Type][Style], Prop_Send, "m_hActiveWeapon");
-						
-						if(weaponIndex != -1)
-						{
-							new ammo = Weapon_GetPrimaryClip(weaponIndex);
-							
-							if(ammo < 1)
-								Weapon_SetPrimaryClip(weaponIndex, 9999);
 						}
 					}
 				}
@@ -804,7 +666,17 @@ public LoadGhost_Callback(Handle:owner, Handle:hndl, String:error[], any:data)
 				decl String:sTime[32];
 				FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
 				
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sName, sTime);
+				decl String:sNameStart[64];
+				if(Type == TIMER_MAIN)
+				{
+					GetStyleName(Style, sNameStart, sizeof(sNameStart));
+				}
+				else
+				{
+					GetTypeName(Type, sNameStart, sizeof(sNameStart));
+					GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
+				}
+				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
 			}
 			
 			g_bGhostLoaded[Type][Style] = true;
@@ -880,10 +752,20 @@ SaveGhost(client, Float:Time, Type, Style)
 	
 	g_GhostFrame[Type][Style] = 0;
 	
-	decl String:name[20], String:sTime[32];
-	GetClientName(client, name, sizeof(name));
+	decl String:sTime[32];
 	FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
-	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", name, sTime);
+	
+	decl String:sNameStart[64];
+	if(Type == TIMER_MAIN)
+	{
+		GetStyleName(Style, sNameStart, sizeof(sNameStart));
+	}
+	else
+	{
+		GetTypeName(Type, sNameStart, sizeof(sNameStart));
+		GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
+	}
+	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sNameStart, sTime);
 }
 
 DeleteGhost(Type, Style)
@@ -899,7 +781,19 @@ DeleteGhost(Type, Style)
 	{
 		g_fGhostTime[Type][Style] = 0.0;
 		ClearArray(g_hGhost[Type][Style]);
-		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "No record");
+		
+		decl String:sNameStart[64];
+		if(Type == TIMER_MAIN)
+		{
+			GetStyleName(Style, sNameStart, sizeof(sNameStart));
+		}
+		else
+		{
+			GetTypeName(Type, sNameStart, sizeof(sNameStart));
+			GetStyleName(Style, sNameStart, sizeof(sNameStart), true);
+		}
+		
+		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - No record", sNameStart);
 		CS_RespawnPlayer(g_Ghost[Type][Style]);
 	}
 }
@@ -956,19 +850,18 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 						new iSize = GetArraySize(g_hGhost[Type][Style]);
 						
 						new Float:vPos[3], Float:vAng[3];
-						if(g_GhostFrame[Type][Style] == 0)
+						if(g_GhostFrame[Type][Style] == 1)
 						{
 							g_fStartTime[Type][Style] = GetEngineTime();
 							
-							if(iSize > 0)
-							{
-								vPos[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 0);
-								vPos[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 1);
-								vPos[2] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 2);
-								vAng[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 3);
-								vAng[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 4);
-								TeleportEntity(g_Ghost[Type][Style], vPos, vAng, Float:{0.0, 0.0, 0.0});
-							}
+
+							vPos[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 0);
+							vPos[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 1);
+							vPos[2] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 2);
+							vAng[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 3);
+							vAng[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 4);
+							TeleportEntity(g_Ghost[Type][Style], vPos, vAng, Float:{0.0, 0.0, 0.0});
+							
 							
 							if(g_GhostPaused[Type][Style] == false)
 							{
@@ -984,16 +877,15 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 						}
 						else if(g_GhostFrame[Type][Style] == (iSize - 1))
 						{
-							if(iSize > 0)
-							{
-								vPos[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 0);
-								vPos[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 1);
-								vPos[2] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 2);
-								vAng[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 3);
-								vAng[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 4);
+
+							vPos[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 0);
+							vPos[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 1);
+							vPos[2] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 2);
+							vAng[0] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 3);
+							vAng[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 4);
 								
-								TeleportEntity(g_Ghost[Type][Style], vPos, vAng, Float:{0.0, 0.0, 0.0});
-							}
+							TeleportEntity(g_Ghost[Type][Style], vPos, vAng, Float:{0.0, 0.0, 0.0});
+							
 							
 							if(g_GhostPaused[Type][Style] == false)
 							{					
@@ -1004,7 +896,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 							if(GetEngineTime() > g_fPauseTime[Type][Style] + GetConVarFloat(g_hGhostEndPauseTime))
 							{
 								g_GhostPaused[Type][Style] = false;
-								g_GhostFrame[Type][Style]  = (g_GhostFrame[Type][Style] + 1) % iSize;
+								g_GhostFrame[Type][Style]  = 1;
 							}
 						}
 						else if(g_GhostFrame[Type][Style] < iSize)
@@ -1019,27 +911,35 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 							vAng[1] = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 4);
 							buttons = GetArrayCell(g_hGhost[Type][Style], g_GhostFrame[Type][Style], 5);
 							
-							if(GetVectorDistance(vPos, vPos2) > 50.0)
+							// Get the new velocity from the the 2 points
+							new Float:vVel[3];
+							MakeVectorFromPoints(vPos2, vPos, vVel);
+							ScaleVector(vVel, 1.0 / GetTickInterval());
+								
+							//TeleportEntity(g_Ghost[Type][Style], NULL_VECTOR, vAng, vVel);
+							
+							float fDistance = GetVectorDistance(vPos2, vPos);
+
+							if((g_GhostFrame[Type][Style] % 128) == 0 && SquareRoot(Pow(vVel[0], 2.0) + Pow(vVel[1], 2.0)) < 2.0 * fDistance)
 							{
-								TeleportEntity(g_Ghost[Type][Style], vPos, vAng, NULL_VECTOR);
+								TeleportEntity(g_Ghost[Type][Style], vPos2, vAng, vVel);
 							}
+							
 							else
 							{
-								// Get the new velocity from the the 2 points
-								new Float:vVel[3];
-								MakeVectorFromPoints(vPos2, vPos, vVel);
-								ScaleVector(vVel, 100.0);
-								
 								TeleportEntity(g_Ghost[Type][Style], NULL_VECTOR, vAng, vVel);
 							}
+							
 							
 							if(GetEntityFlags(g_Ghost[Type][Style]) & FL_ONGROUND)
 								SetEntityMoveType(g_Ghost[Type][Style], MOVETYPE_WALK);
 							else
 								SetEntityMoveType(g_Ghost[Type][Style], MOVETYPE_NOCLIP);
 							
-							g_GhostFrame[Type][Style] = (g_GhostFrame[Type][Style] + 1) % iSize;
+							g_GhostFrame[Type][Style]++;
 						}
+						else if(g_GhostFrame[Type][Style] == 0 && iSize > 0)
+							g_GhostFrame[Type][Style]++;
 						
 						if(g_GhostPaused[Type][Style] == true)
 						{
