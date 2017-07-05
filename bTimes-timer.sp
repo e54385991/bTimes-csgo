@@ -1542,92 +1542,6 @@ GetClanTagString(client, String:tag[], maxlength)
         FormatEx(tag, maxlength, "NO TIMER");
     }
 }
-/*
-int GetHUDTarget(int client)
-{
-	int target = client;
-
-	if(IsClientObserver(client))
-	{
-		int iObserverMode = GetEntProp(client, Prop_Send, "m_iObserverMode");
-
-		if(iObserverMode >= 3 && iObserverMode <= 5)
-		{
-			int iTarget = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
-
-			if(IsValidClient(iTarget, true))
-			{
-				target = iTarget;
-			}
-		}
-	}
-
-	return target;
-}
-
-void HudUpDate(int client)
-{
-	int target = GetHUDTarget(client);
-	
-	int settings = GetClientSettings(client);
-	
-	int Style    = g_Style[client][g_Type[client]];
-	
-	char[] sHintText = new char[1024];
-	strcopy(sHintText, 1024, "");
-	
-
-	
-	if(strlen(sHintText) > 0)
-	{
-		PrintHintText(client, sHintText);
-	}
-	
-	else 
-	{
-		if(Timer_InsideZone(target, MAIN_START) != -1 || Timer_InsideZone(target, BONUS_START) != -1 )
-		{
-			FormatEx(sHintText, 64, "\t\t<font color=\"#4286f4\">In Start Zone</font>\n\n\t\t\t%d", RoundToFloor(GetClientVelocity(target, true, true, !bool:(settings & SHOW_2DVEL))));
-		}
-		
-		else
-		
-		if(g_bTiming[target])
-		{
-			if(g_StyleConfig[Style][Hud_Style])
-	    	{
-	        	FormatEx(sHintText, 1024, "%s<font size =\"16\">Style: %s\t\t\t", sHintText, g_StyleConfig[Style][Name]);
-	    	}
-			
-			new Float:fTime = GetClientTimer(client);
-			decl String:sTime[32];
-			FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 0);
-			FormatEx(sHintText, 1024, "%sTime: %s (<font color=\"#67f210\"> %d </font>)\n", sHintText, sTime, GetPlayerPosition(fTime, g_Type[client], Style));
-	    
-			if(g_StyleConfig[Style][Hud_Jumps])
-			{
-				FormatEx(sHintText, 1024, "%sJumps: %d\t\t\t", sHintText, g_Jumps[client]);
-			}
-	    
-			if(g_StyleConfig[Style][Hud_Strafes])
-			{
-				FormatEx(sHintText, 1024, "%sStrafes: %d\n", sHintText, g_Strafes[client]);
-			}
-	    
-			FormatEx(sHintText, 1024, "%sSpeed: %d</font>", sHintText, RoundToFloor(GetClientVelocity(client, true, true, (GetClientSettings(client) & SHOW_2DVEL) == 0)));
-		}
-		
-		else
-		
-		{
-			FormatEx(sHintText, 1024, "\t\t\t<font color=\"#4286f4\">Timer Stop</font>\n\t\t<font color=\"#4286f4\">%d</font>", RoundToFloor(GetClientVelocity(client, true, true, (GetClientSettings(client) & SHOW_2DVEL) == 0)));
-		}
-		
-		PrintHintText(client, "%s", sHintText);
-		
-	}
-}
-*/
 
 public Action:Timer_DrawHintText(Handle:timer, any:data)
 {
@@ -2166,17 +2080,6 @@ bool:GetKeyHintMessage(client, String:message[], maxlength, SpecCount[], AdminSp
     
     return true;
 }
-/*
-PrintKeyHintText(client, const String:message[])
-{
-    new Handle:hMessage = StartMessageOne("KeyHintText", client);
-    if (hMessage != INVALID_HANDLE) 
-    { 
-        BfWriteByte(hMessage, 1); 
-        BfWriteString(hMessage, message);
-    }
-    EndMessage();
-}*/
 
 Float:GetClientSync(client)
 {
@@ -4201,6 +4104,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
                 if((GetClientSettings(client) & AUTO_BHOP) && IsPlayerAlive(client))
                 {
                     SendConVarValue(client, g_ConVar_Autobunnyhopping, "1");
+                    buttons &= ~IN_JUMP;
                 }
             }
         }
@@ -4209,8 +4113,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
         {
             if(Timer_InsideZone(client, MAIN_START, -1) != -1 || Timer_InsideZone(client, BONUS_START, -1) != -1)
             {
-                buttons &= ~IN_JUMP;
-                SendConVarValue(client, g_ConVar_Autobunnyhopping, "1");
+                //buttons &= ~IN_JUMP;
+                SendConVarValue(client, g_ConVar_Autobunnyhopping, "0");
             }
         }
     }
@@ -4222,3 +4126,4 @@ stock bool IsValidClient(int client, bool bAlive = false) // when bAlive is fals
 {
 	return (client >= 1 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client) && (!bAlive || IsPlayerAlive(client)));
 }
+
