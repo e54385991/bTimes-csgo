@@ -517,7 +517,7 @@ public Action:GhostCheck(Handle:timer, any:data)
 											sStyle,
 											sTime,
 											flPTS,
-											fSpeed_New);
+											fSpeed_New); 
 										}
 									}
 								}
