@@ -262,16 +262,8 @@ public OnPluginStart()
     SetConVarFlags( g_ConVar_EnableBunnyhopping, flags );
     
     g_ConVar_Autobunnyhopping = FindConVar( "sv_autobunnyhopping" );
+    SetConVarFlags(g_ConVar_EnableBunnyhopping, FCVAR_NOTIFY);
     
-    if( g_ConVar_Autobunnyhopping == INVALID_HANDLE )
-       SetFailState( "Unable to find cvar handle for sv_autobunnyhopping!" );
-       
-    flags = GetConVarFlags( g_ConVar_Autobunnyhopping );
-    
-    flags &= ~FCVAR_NOTIFY;
-    flags &= ~FCVAR_REPLICATED;
-    
-    SetConVarFlags( g_ConVar_Autobunnyhopping, flags );
     
 }
 
@@ -4103,8 +4095,16 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
             {
                 if((GetClientSettings(client) & AUTO_BHOP) && IsPlayerAlive(client))
                 {
-                    SendConVarValue(client, g_ConVar_Autobunnyhopping, "1");
-                    buttons &= ~IN_JUMP;
+                    if(!(GetEntityFlags(client) & FL_ONGROUND))
+                    {
+                        if(!(GetEntityMoveType(client) & MOVETYPE_LADDER))
+                        {
+                            if(GetEntProp(client, Prop_Data, "m_nWaterLevel") <= 1)
+                            {
+                                 buttons &= ~IN_JUMP;
+                            }
+                        }
+                    }
                 }
             }
         }
