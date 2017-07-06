@@ -45,13 +45,13 @@ new 	Handle:g_hGhost[MAX_TYPES][MAX_STYLES],
 	Float:g_fPauseTime[MAX_TYPES][MAX_STYLES],
 	g_iBotQuota,
 	bool:g_bGhostLoadedOnce[MAX_TYPES][MAX_STYLES],
-	bool:g_bGhostLoaded[MAX_TYPES][MAX_STYLES];
+	bool:g_bGhostLoaded[MAX_TYPES][MAX_STYLES],
+	bool:g_bReplayFileExists[MAX_TYPES][MAX_STYLES];
 	
 new 	Float:g_fStartTime[MAX_TYPES][MAX_STYLES];
 
 // Cvars
-new	Handle:g_hGhostClanTag[MAX_TYPES][MAX_STYLES],
-	Handle:g_hGhostStartPauseTime,
+new	Handle:g_hGhostStartPauseTime,
 	Handle:g_hGhostEndPauseTime;
 	
 // Weapon control
@@ -251,12 +251,17 @@ public OnClientPutInServer(client)
 
 public OnEntityCreated(entity, const String:classname[])
 {
-	if(StrContains(classname, "trigger_", false) != -1)
-	{
-		SDKHook(entity, SDKHook_StartTouch, OnTrigger);
-		SDKHook(entity, SDKHook_EndTouch, OnTrigger);
-		SDKHook(entity, SDKHook_Touch, OnTrigger);
-	}
+    if (StrContains(classname, "func_button", false) != -1)
+    {
+        SDKHook(entity, SDKHook_Use, OnTrigger);
+    }
+
+    if (StrContains(classname, "trigger_", true) != -1 || StrContains(classname, "func_door", true) != -1)
+    {
+        SDKHook(entity, SDKHook_StartTouch, OnTrigger);
+        SDKHook(entity, SDKHook_EndTouch, OnTrigger);
+        SDKHook(entity, SDKHook_Touch, OnTrigger);
+    }
 }
  
 public Action:OnTrigger(entity, other)
@@ -288,7 +293,7 @@ public OnPlayerIDLoaded(client)
 				if(PlayerID == g_GhostPlayerID[Type][Style])
 				{
 					decl String:sTime[32];
-					FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
+					FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 1);
 					
 					decl String:sType[32], String:sStyle[32];
 					GetTypeName(Type, sType, sizeof(sType), true);
@@ -419,6 +424,36 @@ public Menu_DeleteGhost(Handle:menu, MenuAction:action, param1, param2)
 		CloseHandle(menu);
 }
 
+AssignToReplay(client)
+{
+    new bool:bAssigned;
+    for(new Type; Type < MAX_TYPES; Type++)
+    {
+        for(new Style; Style < MAX_STYLES; Style++)
+        {
+            if(g_Ghost[Type][Style] == 0 || !IsClientConnected(g_Ghost[Type][Style]) || !IsFakeClient(g_Ghost[Type][Style]))
+            {
+                if(Style_CanUseReplay(Style, Type))
+                {
+                    g_Ghost[Type][Style] = client;
+                    bAssigned = true;
+                    break;
+                }
+            }
+        }
+        
+        if(bAssigned == true)
+        {
+            break;
+        }
+    }
+    
+    if(bAssigned == false)
+    {
+        KickClient(client);
+    }
+}
+
 public Action:GhostCheck(Handle:timer, any:data)
 {
 	new Handle:hBotQuota = FindConVar("bot_quota");
@@ -427,12 +462,36 @@ public Action:GhostCheck(Handle:timer, any:data)
 	if(iBotQuota != g_iBotQuota)
 		ServerCommand("bot_quota %d", g_iBotQuota);
 	
-	CloseHandle(hBotQuota);
-	
-	
-	float flPTS[MAX_TYPES][MAX_STYLES];
-	float flReplayTick[MAX_TYPES][MAX_STYLES];
-	
+	for(new client = 1; client <= MaxClients; client++)
+    {
+        if(IsClientConnected(client) && IsFakeClient(client) && !IsClientSourceTV(client))
+        {
+            new bool:bIsReplay;
+            
+            for(new Type; Type < MAX_TYPES; Type++)
+            {
+                for(new Style; Style < MAX_STYLES; Style++)
+                {
+                    if(client == g_Ghost[Type][Style])
+                    {
+                        bIsReplay = true;
+                        break;
+                    }
+                }
+                
+                if(bIsReplay == true)
+                {
+                    break;
+                }
+            }
+            
+            if(!bIsReplay)
+            {
+                AssignToReplay(client);
+            }
+        }
+    }
+    
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
 		for(new Style; Style < MAX_STYLES; Style++)
@@ -443,18 +502,19 @@ public Action:GhostCheck(Handle:timer, any:data)
 				{
 					if(IsClientInGame(g_Ghost[Type][Style]))
 					{
-						// Check clan tag
-						decl String:sClanTag[64], String:sCvarClanTag[64];
-						CS_GetClientClanTag(g_Ghost[Type][Style], sClanTag, sizeof(sClanTag));
-						GetConVarString(g_hGhostClanTag[Type][Style], sCvarClanTag, sizeof(sCvarClanTag));
 						
 						FakeClientCommand(g_Ghost[Type][Style], "drop");
-						
-						if(!StrEqual(sCvarClanTag, sClanTag))
+
+						decl String:sName[MAX_NAME_LENGTH];
+						GetNameFromPlayerID(g_GhostPlayerID[Type][Style], sName, sizeof(sName));
+
+						decl String:sClanTag[64];
+						FormatEx(sClanTag, sizeof(sClanTag), "%s", sName);
+						if(!StrEqual("Replay -", sClanTag))
 						{
-							CS_SetClientClanTag(g_Ghost[Type][Style], sCvarClanTag);
+							CS_SetClientClanTag(g_Ghost[Type][Style], sClanTag);
 						}
-						
+
 						// Check name
 						if(strlen(g_sGhost[Type][Style]) > 0)
 						{
@@ -466,10 +526,20 @@ public Action:GhostCheck(Handle:timer, any:data)
 							}
 						}
 						
-						// Check if ghost is dead
-						if(!IsPlayerAlive(g_Ghost[Type][Style]))
+						// Check if replay file is existed
+						if(g_bReplayFileExists[Type][Style])
 						{
-							CS_RespawnPlayer(g_Ghost[Type][Style]);
+							if(!IsPlayerAlive(g_Ghost[Type][Style]))
+							{
+								CS_RespawnPlayer(g_Ghost[Type][Style]);
+							}
+						}
+						else if(!g_bReplayFileExists[Type][Style])
+						{
+							if(IsPlayerAlive(g_Ghost[Type][Style]))
+							{
+								FakeClientCommand(g_Ghost[Type][Style], "kill");
+							}
 						}
 						
 						// Display ghost's current time to spectators
@@ -487,7 +557,7 @@ public Action:GhostCheck(Handle:timer, any:data)
 									{
 										if(!g_GhostPaused[Type][Style] && (0 < g_GhostFrame[Type][Style] < iSize))
 										{
-											decl String:sTime[32], String:sTimes[32], String:sStyle[16], String:sType[16];
+											/*decl String:sTime[32], String:sTimes[32], String:sStyle[16], String:sType[16];
 											
 											new Float:time = GetEngineTime() - g_fStartTime[Type][Style];
 											
@@ -517,13 +587,88 @@ public Action:GhostCheck(Handle:timer, any:data)
 											sStyle,
 											sTime,
 											flPTS,
-											fSpeed_New); 
+											fSpeed_New);*/ 
+											
+											decl String:sTime[32], String:sStyle[16], String:keys[64];
+											new Float:time = GetEngineTime() - g_fStartTime[Type][Style];
+											FormatPlayerTime(time, sTime, sizeof(sTime), false, 0);
+											float fSpeed[3];
+											GetEntPropVector(target, Prop_Data, "m_vecVelocity", fSpeed);
+											float fSpeed_New = SquareRoot(Pow(fSpeed[0], 2.0) + Pow(fSpeed[1], 2.0));
+											GetStyleName(Style, sStyle, sizeof(sStyle));
+											GetKeysMessage(target, keys, sizeof(keys));
+											new SpecCount[MaxClients+1];
+											SpecCountToArrays(SpecCount);
+											new buttons = GetClientButtons(target);
+											PrintHintText(client, "<font size=\"16\" color=\"#%s\">\t\t   Replay</font>\n<font size='16'>Style: %s%sTime: %s\nSpecs: %d\t      %s\t\tSpeed: %.f\n%s", 
+											gS_Colors[gI_StartCycle],
+											sStyle,
+											strlen(sStyle) <= 5 ? "\t\t\t":"\t\t",
+											sTime,
+											SpecCount[target],
+											buttons & IN_FORWARD ? "W":"_",
+											fSpeed_New,
+											keys);
+											
 										}
 									}
 								}
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+}
+
+void GetKeysMessage(int client, char[] keys, int maxlen)
+{
+	new buttons = GetClientButtons(client);
+
+	Format(keys, maxlen, "");
+
+	if(buttons & IN_JUMP)
+		Format(keys, maxlen, "%sJump\t\t   ", keys);
+	else
+		Format(keys, maxlen, "%s    \t\t   ", keys);
+	
+	if(buttons & IN_MOVELEFT)
+		Format(keys, maxlen, "%sA", keys);
+	else
+		Format(keys, maxlen, "%s_ ", keys);
+
+	if(buttons & IN_BACK)
+		Format(keys, maxlen, "%sS", keys);
+	else
+		Format(keys, maxlen, "%s_ ", keys);
+
+	if(buttons & IN_MOVERIGHT)
+		Format(keys, maxlen, "%sD\t\t", keys);
+	else
+		Format(keys, maxlen, "%s_\t\t", keys);
+
+	if(buttons & IN_DUCK)
+		Format(keys, maxlen, "%sDuck", keys);
+	else
+		Format(keys, maxlen, "%s", keys);
+
+	Format(keys, maxlen, "%s", keys);
+}
+
+void SpecCountToArrays(clients[])
+{
+	for(new client = 1; client <= MaxClients; client++)
+	{
+		if(IsClientInGame(client) && !IsFakeClient(client))
+		{
+			if(!IsPlayerAlive(client))
+			{
+				new Target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
+				new ObserverMode = GetEntProp(client, Prop_Send, "m_iObserverMode");
+				if((0 < Target <= MaxClients) && (ObserverMode == 4 || ObserverMode == 5))
+				{
+					clients[Target]++;
 				}
 			}
 		}
@@ -587,6 +732,7 @@ LoadGhost()
 		{
 			if(Style_CanUseReplay(Style, Type))
 			{
+				
 				g_fGhostTime[Type][Style]    = 0.0;
 				g_GhostPlayerID[Type][Style] = 0;
 				
@@ -594,6 +740,9 @@ LoadGhost()
 				
 				if(FileExists(sPath))
 				{
+					
+					g_bReplayFileExists[Type][Style] = true;
+					
 					// Open file for reading
 					new Handle:hFile = OpenFile(sPath, "r");
 					
@@ -640,6 +789,7 @@ LoadGhost()
 				}
 				else
 				{
+					g_bReplayFileExists[Type][Style] = false;
 					g_bGhostLoaded[Type][Style] = true;
 				}
 			}
@@ -671,7 +821,7 @@ public LoadGhost_Callback(Handle:owner, Handle:hndl, String:error[], any:data)
 					g_fGhostTime[Type][Style] = SQL_FetchFloat(hndl, 1);
 				
 				decl String:sTime[32];
-				FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
+				FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 1);
 				
 				decl String:sType[32], String:sStyle[32];
 				GetTypeName(Type, sType, sizeof(sType), true);
@@ -754,13 +904,24 @@ SaveGhost(client, Float:Time, Type, Style)
 	g_GhostFrame[Type][Style] = 0;
 	
 	decl String:sTime[32];
-	FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 0);
+	FormatPlayerTime(g_fGhostTime[Type][Style], sTime, sizeof(sTime), false, 1);
 	
 	decl String:sType[32], String:sStyle[32];
 	GetTypeName(Type, sType, sizeof(sType), true);
 				
 	GetStyleName(Style, sStyle, sizeof(sStyle));
 	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
+	
+	g_bReplayFileExists[Type][Style] = true;
+	
+	if(g_Ghost[Type][Style] != 0)
+    {
+        if(!IsPlayerAlive(g_Ghost[Type][Style]))
+        {
+            CS_RespawnPlayer(g_Ghost[Type][Style]);
+        }
+    }
+	
 }
 
 DeleteGhost(Type, Style)
@@ -783,8 +944,11 @@ DeleteGhost(Type, Style)
 		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
 		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
-		CS_RespawnPlayer(g_Ghost[Type][Style]);
+		FakeClientCommand(g_Ghost[Type][Style], "kill");
 	}
+	
+	g_bReplayFileExists[Type][Style] = false;
+	
 }
 
 DB_Connect()

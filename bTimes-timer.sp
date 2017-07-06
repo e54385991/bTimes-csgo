@@ -96,7 +96,6 @@ new     Handle:g_hTimerDisplay,
     Handle:g_hAllowPause,
     Handle:g_hChangeClanTag,
     Handle:g_hTimerChangeClanTag,
-    Handle:g_hShowTimeLeft,
     Handle:g_hAllowNoClip,
     Handle:g_hVelocityCap,
     bool:g_bAllowVelocityCap,
@@ -130,8 +129,7 @@ new Handle:g_ConVar_AirAccelerate,
 // Admin
 new    bool:g_bIsAdmin[MAXPLAYERS + 1];
 
-// Other plugins
-new    bool:g_bGhostPluginLoaded;
+bool JumpButtonsFix[65] = false;
 
 int g_iStartCycle = 0;
 
@@ -154,6 +152,13 @@ char g_sNoTimerColors[][] =
 	"FF0000", "E00000", "D00000", "C00000", "B00000", "A00000", "900000", "800000", "700000", "600000", "500000", "400000", "300000", "200000", "100000", "200000", "300000", "400000", "500000", "600000", "700000", "800000", "900000", "A00000", "B00000", "C00000", "D00000", "E00000", "FF0000"
 };
 
+int g_iPauseCycle = 0;
+
+char g_sPauseColors[][] =
+{
+   "CC6600", "C26100", "B85C00", "AD5700", "A35200", "994C00", "8F4700", "854200", "7A3D00", "703800", "663300", "5C2E00", "522900", "472400", "3D1F00", "331A00", "291400", "1F0F00", "140A00", "0A0500", "000000", "0A0500", "140A00", "1F0F00", "291400", "331A00", "3D1F00", "472400", "522900", "5C2E00", "663300", "703800", "7A3D00", "854200", "8F4700", "994C00", "A35200", "AD5700", "B85C00", "C26100", "CC6600"
+};
+
 public OnPluginStart()
 {
     decl String:sGame[64];
@@ -174,7 +179,6 @@ public OnPluginStart()
     g_hAllowYawspeed   = CreateConVar("timer_allowyawspeed", "0", "Lets players use +left/+right commands without stopping their timer.", 0, true, 0.0, true, 1.0);
     g_hAllowPause      = CreateConVar("timer_allowpausing", "1", "Lets players use the !pause/!unpause commands.", 0, true, 0.0, true, 1.0);
     g_hChangeClanTag   = CreateConVar("timer_changeclantag", "1", "Means player clan tags will show their current timer time.", 0, true, 0.0, true, 1.0);
-    g_hShowTimeLeft    = CreateConVar("timer_showtimeleft", "1", "Shows the time left until a map change on the right side of player screens.", 0, true, 0.0, true, 1.0);
     g_hAllowNoClip     = CreateConVar("timer_noclip", "1", "Allows players to use the !p commands to noclip themselves.", 0, true, 0.0, true, 1.0);
     g_hVelocityCap     = CreateConVar("timer_velocitycap", "1", "Allows styles with a max velocity cap to cap player velocity.", 0, true, 0.0, true, 1.0);
     g_hJumpInStartZone = CreateConVar("timer_allowjumpinstart", "1", "Allows players to jump in the start zone. (This is not exactly anti-prespeed)", 0, true, 0.0, true, 1.0);
@@ -222,8 +226,9 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_unpause", SM_Unpause, "Unpauses your timer and unfreezes you.");
     RegConsoleCmdEx("sm_resume", SM_Unpause, "Unpauses your timer and unfreezes you.");
     RegConsoleCmdEx("sm_fps", SM_Fps, "Shows a list of every player's fps_max value.");
-    RegConsoleCmdEx("sm_auto", SM_Auto, "Toggles auto bunnyhop");
-    RegConsoleCmdEx("sm_bhop", SM_Auto, "Toggles auto bunnyhop");
+    RegConsoleCmdEx("sm_auto", SM_Auto, "Toggles auto bunnyhop.");
+    RegConsoleCmdEx("sm_bhop", SM_Auto, "Toggles auto bunnyhop.");
+    RegConsoleCmdEx("sm_reloadstyle", SM_ReloadStyle, "Reload Style Config.");
     
     // Makes FindTarget() work properly
     LoadTranslations("common.phrases");
@@ -264,17 +269,13 @@ public OnPluginStart()
     g_ConVar_Autobunnyhopping = FindConVar( "sv_autobunnyhopping" );
     SetConVarFlags(g_ConVar_EnableBunnyhopping, FCVAR_NOTIFY);
     
+    CreateTimer(0.1, UpdateHUD_Timer, INVALID_HANDLE, TIMER_REPEAT);
     
 }
 
 public OnAllPluginsLoaded()
 {
-    if(LibraryExists("ghost"))
-    {
-        g_bGhostPluginLoaded = true;
-    }
-    
-    ReadStyleConfig();
+	ReadStyleConfig();
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -333,19 +334,15 @@ public OnMapStart()
     for(new Type; Type < MAX_TYPES; Type++)
     {
         GetTypeAbbr(Type, sTypeAbbr, sizeof(sTypeAbbr), true);
-        StringToUpper(sTypeAbbr);
         
         for(new Style; Style < g_TotalStyles; Style++)
         {
             GetStyleAbbr(Style, sStyleAbbr, sizeof(sStyleAbbr), true);
-            StringToUpper(sStyleAbbr);
             
-            FormatEx(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sWR%s: Loading..", sTypeAbbr, sStyleAbbr);
+            FormatEx(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sW%s: No Record", sTypeAbbr, sStyleAbbr);
         }
     }
     
-    // Key hint text messages
-    CreateTimer(1.0, Timer_SpecList, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public OnStylesLoaded()
@@ -678,6 +675,36 @@ public Action:Timer_CheckVel(Handle:timer, any:client)
         
         TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vVel);
     }
+}
+
+public Action:UpdateHUD_Timer(Handle:timer)
+{
+	g_iStartCycle++;
+	g_iBStartCycle++;
+	g_iNoTimerCycle++;
+	g_iPauseCycle++;
+
+	if(g_iStartCycle > (sizeof(g_sStartColors) - 1))
+	{
+		g_iStartCycle = 0;
+	}
+	
+	if(g_iBStartCycle > (sizeof(g_sBStartColors) - 1))
+	{
+		g_iBStartCycle = 0;
+	}
+	
+	if(g_iNoTimerCycle > (sizeof(g_sNoTimerColors) - 1))
+	{
+		g_iNoTimerCycle = 0;
+	}
+	
+	if(g_iPauseCycle > (sizeof(g_sPauseColors) - 1))
+	{
+		g_iPauseCycle = 0;
+	}
+	
+	return Plugin_Continue;
 }
 
 // Auto bhop
@@ -1185,6 +1212,11 @@ SetStyle(client, Type, Style)
     
     StopTimer(client);
     
+    if(!IsPlayerAlive(client))
+    {
+        CS_RespawnPlayer(client);
+    }
+    
     if(Type == TIMER_MAIN)
         Timer_TeleportToZone(client, MAIN_START, 0, true);
     else if(Type == TIMER_BONUS)
@@ -1320,7 +1352,7 @@ public Action:SM_Unpause(client, args)
                 TeleportEntity(client, g_fPausePos[client], NULL_VECTOR, Float:{0, 0, 0});
                 
                 // Set their new start time
-                g_fCurrentTime[client] = GetEngineTime() - (g_fPauseTime[client] - g_fCurrentTime[client]);
+                g_fCurrentTime[client] = g_fPauseTime[client];
                 
                 // Unpause
                 g_bPaused[client] = false;
@@ -1486,6 +1518,13 @@ public Action:SM_DisableStyle(client, args)
     return Plugin_Handled;
 }
 
+public Action SM_ReloadStyle(int client, int args)
+{
+	ReadStyleConfig();
+	
+	return Plugin_Handled;
+}
+
 public Action:SetClanTag(Handle:timer, any:data)
 {
     decl String:sTag[32];
@@ -1553,9 +1592,6 @@ public Action:Timer_DrawHintText(Handle:timer, any:data)
 			
 			if(GetHintMessage(client, sHintMessage, sizeof(sHintMessage), SpecCount, AdminSpecCount))
 			{
-				// if(g_GameType == GameType_CSS)
-				//     PrintHintText(client, sHintMessage);
-
 				PrintHintText(client, sHintMessage);
 			}
 		}
@@ -1564,10 +1600,8 @@ public Action:Timer_DrawHintText(Handle:timer, any:data)
 
 bool:GetHintMessage(client, String:buffer[], maxlength, SpecCount[], AdminSpecCount[])
 {
-	FormatEx(buffer, maxlength, "");
-	
 	new target;
-	
+
 	if(IsPlayerAlive(client))
 	{
 		target = client;
@@ -1582,22 +1616,97 @@ bool:GetHintMessage(client, String:buffer[], maxlength, SpecCount[], AdminSpecCo
 		if(IsFakeClient(target))
 			return false;
 	}
-	
+
 	new settings = GetClientSettings(client);
-	new Style = g_Style[client][g_Type[client]];
-	
+	new Style = g_Style[target][g_Type[target]];
+	new buttons = GetClientButtons(target);
+
 	if(Timer_InsideZone(target, MAIN_START) != -1 || Timer_InsideZone(target, BONUS_START) != -1)
 	{
 		if(Timer_InsideZone(target, MAIN_START) != -1)
-		FormatEx(buffer, maxlength, "<font size=\"40\" color=\"#%s\">Main Start</font>\n<font size=\"18\">%s\t   Speed: %d</font>",
-			g_sStartColors[g_iStartCycle],
-			g_StyleConfig[Style][Name],
-			RoundToFloor(GetClientVelocity(target, true, true, !bool:(settings & SHOW_2DVEL))));
+		{
+			FormatEx(buffer, maxlength, "");
+
+			if(strlen(g_StyleConfig[Style][Name]) <= 5)
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			else
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			
+			Format(buffer, maxlength, "%s<font color=\"#%s\">Main Start\n</font>", buffer, g_sStartColors[g_iStartCycle]);
+			
+			if(!IsFakeClient(client))
+			{
+				if(strlen(g_sTime[target][g_Type[target]][GetStyle(target)]) > 11)
+				{
+					Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+				else
+				{
+					Format(buffer, maxlength, "%s%s\t\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+			}
+			
+			if(!IsFakeClient(client))
+			{
+				Format(buffer, maxlength, "%s%s\n", buffer, g_sRecord[g_Type[target]][GetStyle(target)]);
+			}
+			
+			Format(buffer, maxlength, "%sSpecs: %d\t      %s\t\t", buffer, (g_bIsAdmin[client])?AdminSpecCount[target]:SpecCount[target], buttons & IN_FORWARD ? "W":"_");
+			
+			Format(buffer, maxlength, "%sSpeed: %d\n", buffer, RoundToFloor(GetClientVelocity(target, true, true, (settings & SHOW_2DVEL) == 0)));
+		
+			char keys[32];
+			GetKeysMessage(target, keys, sizeof(keys));
+			Format(buffer, maxlength, "%s%s", buffer, keys);
+			
+			Format(buffer, maxlength, "<font size='16'>%s</font>", buffer);
+		}
 		else if(Timer_InsideZone(target, BONUS_START) != -1)
-		FormatEx(buffer, maxlength, "<font size=\"40\" color=\"#%s\">Bonus Start</font>\n<font size=\"18\">%s\t   Speed: %d</font>",
-			g_sBStartColors[g_iBStartCycle],
-			g_StyleConfig[Style][Name],
-			RoundToFloor(GetClientVelocity(target, true, true, !bool:(settings & SHOW_2DVEL))));
+		{
+			FormatEx(buffer, maxlength, "");
+
+			if(strlen(g_StyleConfig[Style][Name]) <= 5)
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			else
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			
+			Format(buffer, maxlength, "%s<font color=\"#%s\">Bonus Start\n</font>", buffer, g_sBStartColors[g_iBStartCycle]);
+			
+			if(!IsFakeClient(client))
+			{
+				if(strlen(g_sTime[target][g_Type[target]][GetStyle(target)]) > 11)
+				{
+					Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+				else
+				{
+					Format(buffer, maxlength, "%s%s\t\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+			}
+			
+			if(!IsFakeClient(client))
+			{
+				Format(buffer, maxlength, "%s%s\n", buffer, g_sRecord[g_Type[target]][GetStyle(target)]);
+			}
+			
+			Format(buffer, maxlength, "%sSpecs: %d\t      %s\t\t", buffer, (g_bIsAdmin[client])?AdminSpecCount[target]:SpecCount[target], buttons & IN_FORWARD ? "W":"_");
+			
+			Format(buffer, maxlength, "%sSpeed: %d\n", buffer, RoundToFloor(GetClientVelocity(target, true, true, (settings & SHOW_2DVEL) == 0)));
+			
+			char keys[32];
+			GetKeysMessage(target, keys, sizeof(keys));
+			Format(buffer, maxlength, "%s%s", buffer, keys);
+			
+			Format(buffer, maxlength, "<font size='16'>%s</font>", buffer);
+		}
 	}
 	else
 	{
@@ -1605,26 +1714,51 @@ bool:GetHintMessage(client, String:buffer[], maxlength, SpecCount[], AdminSpecCo
 		{
 			if(g_bPaused[target] == false)
 			{
-				if(settings & SHOW_HINT)
-				{
-					GetTimerAdvancedString(target, buffer, maxlength, client, SpecCount, AdminSpecCount);
-				}
-				else
-				{
-					GetTimerSimpleString(target, buffer, maxlength);
-				}
+				GetTimerAdvancedString(target, buffer, maxlength, client, SpecCount, AdminSpecCount);
 			}
 			else
 			{
-				GetTimerPauseString(target, buffer, maxlength);
+				GetTimerPauseString(target, buffer, maxlength, client, SpecCount, AdminSpecCount);
 			}
 		}
 		else
 		{
-			FormatEx(buffer, maxlength, "<font size=\"41\" color=\"#%s\">No Timer</font>\n<font size=\"18\">Spec: %d\t Speed: %d</font>",
-				g_sNoTimerColors[g_iNoTimerCycle],
-				(g_bIsAdmin[client])?AdminSpecCount[target]:SpecCount[target],
-				RoundToFloor(GetClientVelocity(target, true, true, !bool:(settings & SHOW_2DVEL))));
+			FormatEx(buffer, maxlength, "");
+			
+			if(strlen(g_StyleConfig[Style][Name]) <= 5)
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			else
+			{
+				Format(buffer, maxlength, "%sStyle: %s\t\t", buffer, g_StyleConfig[Style][Name]);
+			}
+			
+			Format(buffer, maxlength, "%s<font color=\"#%s\">No Timer\n</font>", buffer, g_sNoTimerColors[g_iNoTimerCycle]);
+			
+			if(!IsFakeClient(client))
+			{
+				if(strlen(g_sTime[target][g_Type[target]][GetStyle(target)]) > 11)
+				{
+					Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+				else
+				{
+					Format(buffer, maxlength, "%s%s\t\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
+				}
+			}
+			
+			Format(buffer, maxlength, "%sSync: %.1f\n", buffer, GetClientSync(target));
+			
+			Format(buffer, maxlength, "%sSpecs: %d\t      %s\t\t", buffer, (g_bIsAdmin[client])?AdminSpecCount[target]:SpecCount[target], buttons & IN_FORWARD ? "W":"_");
+			
+			Format(buffer, maxlength, "%sSpeed: %d\n", buffer, RoundToFloor(GetClientVelocity(target, true, true, (settings & SHOW_2DVEL) == 0)));
+
+			char keys[32];
+			GetKeysMessage(target, keys, sizeof(keys));
+			Format(buffer, maxlength, "%s%s", buffer, keys);
+			
+			Format(buffer, maxlength, "<font size='16'>%s</font>", buffer);
 		}
 	}
 	
@@ -1636,11 +1770,14 @@ GetTimerAdvancedString(client, String:sResult[], maxlength, ward, SpecCount[], A
 	FormatEx(sResult, maxlength, "");
 	
 	new Style    = g_Style[client][g_Type[client]];
+	new buttons  = GetClientButtons(client);
+	int settings = GetClientSettings(client);
 	
-// 	if(g_Type[client] == TIMER_BONUS)
-// 		FormatEx(sResult, maxlength, "Bonus\n");
-	
-	if(g_StyleConfig[Style][Hud_Style])
+	if(strlen(g_StyleConfig[Style][Name]) <= 5)
+	{
+		Format(sResult, maxlength, "%sStyle: %s\t\t\t", sResult, g_StyleConfig[Style][Name]);
+	}
+	else
 	{
 		Format(sResult, maxlength, "%sStyle: %s\t\t", sResult, g_StyleConfig[Style][Name]);
 	}
@@ -1650,131 +1787,122 @@ GetTimerAdvancedString(client, String:sResult[], maxlength, ward, SpecCount[], A
 	FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 0);
 	GetTimeColor(fTime, g_WorldRecord[g_Type[client]][Style], sColor, sizeof(sColor));
 	Format(sResult, maxlength, "%sTime: <font color='#%s'>%s</font> #%d\n", sResult, sColor, sTime, GetPlayerPosition(fTime, g_Type[client], Style));
-
-	int settings = GetClientSettings(client);
-	
-	if(g_StyleConfig[Style][CalcSync] && settings & KH_SYNC)
-	{
-		Format(sResult, maxlength, "%sSync: %.1f\t\t\t", sResult, GetClientSync(client));
-	}
-
-	if(!IsFakeClient(client))
-	{
-		if(settings & KH_RECORD)
-		{
-			//Format(sResult, maxlength, "%s%s%s\t\t", sResult, g_sRecord[g_Type[client]][GetStyle(client)], settings & KH_BEST ? "  " : "\n");
-			Format(sResult, maxlength, "%s%s\n", sResult, g_sRecord[g_Type[client]][GetStyle(client)]);
-		}
-		
-		/*if(settings & KH_BEST)
-		{
-			Format(sResult, maxlength, "%s%s\n", sResult, g_sTime[client][g_Type[client]][GetStyle(client)]);
-		}*/
-	}
-	else if(g_bGhostPluginLoaded)
-	{
-		new botType, botStyle;
-		
-		if(GetBotInfo(client, botType, botStyle))
-		{
-			Format(sResult, maxlength, "%s%s\n", sResult, g_sRecord[botType][botStyle]);
-		}
-	}
-
-// 	if(g_StyleConfig[Style][Hud_Jumps])
-// 	{
-// 		Format(sResult, maxlength, "%sJumps: %d\n", sResult, g_Jumps[client]);
-// 	}
-
-	if (settings & KH_SPECS)
-	{
-		Format(sResult, maxlength, "%sSpec: %d\t\t\t", sResult, (g_bIsAdmin[ward])?AdminSpecCount[client]:SpecCount[client]);
-	}
 	
 	if(!IsFakeClient(client))
 	{
-		if(settings & KH_BEST)
+		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) > 11)
 		{
-			Format(sResult, maxlength, "%s%s\n", sResult, g_sTime[client][g_Type[client]][GetStyle(client)]);
+			Format(sResult, maxlength, "%s%s\t\t", sResult, g_sTime[client][g_Type[client]][GetStyle(client)]);
+		}
+		else
+		{
+			Format(sResult, maxlength, "%s%s\t\t\t", sResult, g_sTime[client][g_Type[client]][GetStyle(client)]);
 		}
 	}
-	else if(g_bGhostPluginLoaded)
-	{
-		new botType, botStyle;
-		
-		if(GetBotInfo(client, botType, botStyle))
-		{
-			Format(sResult, maxlength, "%s%s\n", sResult, g_sRecord[botType][botStyle]);
-		}
-	}
+
+	Format(sResult, maxlength, "%sSync: %.1f\n", sResult, GetClientSync(client));
+
+	Format(sResult, maxlength, "%sSpecs: %d\t      %s\t\t", sResult, (g_bIsAdmin[ward])?AdminSpecCount[client]:SpecCount[client], buttons & IN_FORWARD ? "W":"_");
 	
-	if (settings & SHOW_KEYS)
-	{
-		char keys[32];
-		GetKeysMessage(client, keys, sizeof(keys));
-		Format(sResult, maxlength, "%s%s\t\t\t", sResult, keys);
-	}
+	Format(sResult, maxlength, "%sSpeed: %d\n", sResult, RoundToFloor(GetClientVelocity(client, true, true, (settings & SHOW_2DVEL) == 0)));
 	
-	Format(sResult, maxlength, "%sSpeed: %d", sResult, RoundToFloor(GetClientVelocity(client, true, true, (settings & SHOW_2DVEL) == 0)));
+	char keys[32];
+	GetKeysMessage(client, keys, sizeof(keys));
+	Format(sResult, maxlength, "%s%s", sResult, keys);
 	
 	Format(sResult, maxlength, "<font size='16'>%s</font>", sResult);
 }
 
-void GetKeysMessage(int client, char[] keys, int maxlength)
+GetTimerPauseString(client, String:buffer[], maxlength, ward, SpecCount[], AdminSpecCount[])
 {
-	new buttons = GetClientButtons(client);
-	Format(keys, maxlength, "%s%s%s%s - %s%s",
-		buttons & IN_MOVELEFT ? "A" : "_ ",
-		buttons & IN_FORWARD ? "W" : "_ ",
-		buttons & IN_BACK ? "S" : "_ ",
-		buttons & IN_MOVERIGHT ? "D" : "_ ",
-		buttons & IN_DUCK ? "C" : "_ ",
-		buttons & IN_JUMP ? "J" : "_ ");
-}
+	new Float:fTime = g_fPauseTime[client];
+	new Style    = g_Style[client][g_Type[client]];
+	new buttons  = GetClientButtons(client);
 
-GetTimerSimpleString(client, String:sResult[], maxlength)
-{
-	new Style = g_Style[client][g_Type[client]];
-	
-	new Float:fTime = GetClientTimer(client);
-	new String:sTime[32], String:sColor[7];
+	decl String:sTime[32];
 	FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 0);
-	GetTimeColor(fTime, g_WorldRecord[g_Type[client]][Style], sColor, sizeof(sColor));
-	Format(sResult, maxlength, "<font size=\"40\" color=\"#%s\">%s</font>\n", sColor, sTime);
 
-	int settings = GetClientSettings(client);
+	FormatEx(buffer, maxlength, "");
+	
+	Format(buffer, maxlength, "%s<font color=\"#%s\">\t\t  Pause</font>\n", buffer, g_sPauseColors[g_iPauseCycle]);
 
-	Format(sResult, maxlength, "%s<font size=\"18\">Sync: %.1f</font>\t\t", sResult, GetClientSync(client));
+	if(!IsFakeClient(client))
+	{
+		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) > 11)
+		{
+			Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[client][g_Type[client]][GetStyle(client)]);
+		}
+		else
+		{
+			Format(buffer, maxlength, "%s%s\t\t\t", buffer, g_sTime[client][g_Type[client]][GetStyle(client)]);
+		}
+	}
+	
+	Format(buffer, maxlength, "%sTime: %s\n", buffer, sTime);
 
-	Format(sResult, maxlength, "%s<font size=\"18\">Speed: %d</font>", sResult, RoundToFloor(GetClientVelocity(client, true, true, (settings & SHOW_2DVEL) == 0)));
+	Format(buffer, maxlength, "%sSpecs: %d\t      %s\t\t", buffer, (g_bIsAdmin[ward])?AdminSpecCount[client]:SpecCount[client], buttons & IN_FORWARD ? "W":"_");
+
+	Format(buffer, maxlength, "%sStyle: %s\n", buffer, g_StyleConfig[Style][Name]);
+
+	char keys[32];
+	GetKeysMessage(client, keys, sizeof(keys));
+	Format(buffer, maxlength, "%s%s", buffer, keys);
+	
+	Format(buffer, maxlength, "<font size='16'>%s</font>", buffer);
 }
 
 void GetTimeColor(float time, float wr, char[] color, int maxlength)
 {
-	if (wr == 0.0) {
+	if (wr == 0.0) 
+	{
 		FormatEx(color, maxlength, "00FF00");
 		return;
 	}
 
 	float ratio = time / wr;
-	if (ratio < 1.0) {
+	if (ratio < 1.0)
+	{
 		if (ratio <= 0.5)
 			FormatEx(color, maxlength, "%02XFF00", RoundFloat(510.0 * ratio));
 		else
 			FormatEx(color, maxlength, "FF%02X00", RoundFloat(510.0 * (1.0 - ratio))); // 255 - 510 * (ratio - 0.5)
 	}
 	else
-		FormatEx(color, maxlength, "0080ff");
+		FormatEx(color, maxlength, "0066CC");
 }
 
-GetTimerPauseString(client, String:buffer[], maxlen)
+void GetKeysMessage(int client, char[] keys, int maxlen)
 {
-	new Float:fTime = g_fPauseTime[client] - g_fCurrentTime[client];
+	new buttons = GetClientButtons(client);
+
+	Format(keys, maxlen, "");
+
+	if(JumpButtonsFix[client])
+		Format(keys, maxlen, "%sJump\t\t   ", keys);
+	else
+		Format(keys, maxlen, "%s    \t\t   ", keys);
 	
-	decl String:sTime[32];
-	FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 0);
-	
-	Format(buffer, maxlen, "<font size=\"40\" color=\"#%s\">Paused</font>\n<font size=\"18\">Time: %s</font>", g_sNoTimerColors[g_iStartCycle], sTime);
+	if(buttons & IN_MOVELEFT)
+		Format(keys, maxlen, "%sA", keys);
+	else
+		Format(keys, maxlen, "%s_ ", keys);
+
+	if(buttons & IN_BACK)
+		Format(keys, maxlen, "%sS", keys);
+	else
+		Format(keys, maxlen, "%s_ ", keys);
+
+	if(buttons & IN_MOVERIGHT)
+		Format(keys, maxlen, "%sD\t\t", keys);
+	else
+		Format(keys, maxlen, "%s_\t\t", keys);
+
+	if(buttons & IN_DUCK)
+		Format(keys, maxlen, "%sDuck", keys);
+	else
+		Format(keys, maxlen, "%s", keys);
+
+	Format(keys, maxlen, "%s", keys);
 }
 
 GetPlayerPosition(const Float:fTime, Type, Style)
@@ -1817,127 +1945,6 @@ GetPlayerPositionByID(PlayerID, Type, Style)
     return 0;
 }
 
-// Controls what shows up on the right side of players screen, KeyHintText
-public Action:Timer_SpecList(Handle:timer, any:data)
-{
-    // Different arrays for admins and non-admins
-    new     SpecCount[MaxClients+1], AdminSpecCount[MaxClients+1];
-    SpecCountToArrays(SpecCount, AdminSpecCount);
-    
-    decl String:message[256];
-    for(new client = 1; client <= MaxClients; client++)
-    {
-        if(IsClientInGame(client) && !IsFakeClient(client))
-        {
-            if(GetKeyHintMessage(client, message, sizeof(message), SpecCount, AdminSpecCount))
-            {
-                /*new Handle:hText = CreateHudSynchronizer();
-                if(g_GameType == GameType_CSGO)
-                    SetHudTextParams(1, 0.75, 1.0, 255, 255, 255, 16);
-                    ShowSyncHudText(client, hText, message);
-                    CloseHandle(hText);*/
-            }
-            
-            if(IsPlayerAlive(client))
-            {
-                QueryClientConVar(client, "cl_radaralpha", OnRadarAlphaRetrieved);
-            }
-            else
-            {
-                if(GetSyncHudMessage(client, message, sizeof(message)))
-                {
-                    new Handle:hText = CreateHudSynchronizer();
-                    if(hText != INVALID_HANDLE)
-                    {
-                        SetHudTextParams(0.01, 0.01, 1.0, 255, 255, 255, 255);
-                        ShowSyncHudText(client, hText, message);
-                        CloseHandle(hText);
-                    }
-                }
-            }
-        }
-    }
-}
-
-public OnRadarAlphaRetrieved(QueryCookie:cookie, client, ConVarQueryResult:result, const String:cvarName[], const String:cvarValue[])
-{    
-    if(StringToInt(cvarValue) == 0)
-    {
-        decl String:sMessage[128];
-        if(GetSyncHudMessage(client, sMessage, sizeof(sMessage)))
-        {
-            new Handle:hText = CreateHudSynchronizer();
-            
-            if(hText != INVALID_HANDLE)
-            {
-                SetHudTextParams(0.01, 0.01, 1.0, 255, 255, 255, 255);
-                ShowSyncHudText(client, hText, sMessage);
-                CloseHandle(hText);
-            }
-        }
-    }
-}
-
-bool:GetSyncHudMessage(client, String:message[], maxlength)
-{
-    FormatEx(message, maxlength, "");
-    
-    new target;
-    
-    if(!IsPlayerAlive(client))
-    {
-        target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
-        new mode = GetEntProp(client, Prop_Send, "m_iObserverMode");
-        if(!((0 < target <= MaxClients) && (mode == 4 || mode == 5)))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        target = client;
-        //return false;
-    }
-    
-    if(!IsFakeClient(target))
-    {
-        new Type = g_Type[target];
-        new Style = g_Style[target][g_Type[target]];
-        
-        Format(message, maxlength, g_sRecord[Type][Style]);
-        
-        new position;
-        Format(message, maxlength, "%s\n%s", message, g_sTime[target][g_Type[target]][GetStyle(target)]);
-        if(g_fTime[target][g_Type[target]][GetStyle(target)] != 0.0)
-        {
-            position = GetPlayerPositionByID(GetPlayerID(target), g_Type[target], GetStyle(target));
-            Format(message, maxlength, "%s (#%d)", message, position);
-        }
-        
-        return true;
-    }
-    else
-    {
-        if(g_bGhostPluginLoaded == true)
-        {
-            new Type, Style;
-            if(GetBotInfo(target, Type, Style))
-            {
-                Format(message, maxlength, g_sRecord[Type][Style]);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else
-        {
-            return false;
-        }
-    }
-}
-
 SpecCountToArrays(clients[], admins[])
 {
     for(new client = 1; client <= MaxClients; client++)
@@ -1957,120 +1964,6 @@ SpecCountToArrays(clients[], admins[])
             }
         }
     }
-}
-
-bool:GetKeyHintMessage(client, String:message[], maxlength, SpecCount[], AdminSpecCount[])
-{
-    FormatEx(message, maxlength, "");
-    
-    new target;
-    
-    if(IsPlayerAlive(client))
-    {
-        target = client;
-    }
-    else
-    {
-        target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
-        new mode = GetEntProp(client, Prop_Send, "m_iObserverMode");
-        if(!((0 < target <= MaxClients) && (mode == 4 || mode == 5)))
-        {
-            return false;
-        }
-    }
-    
-    new settings = GetClientSettings(client);
-    
-    if(settings & KH_TIMELEFT)
-    {
-        new timelimit;
-        GetMapTimeLimit(timelimit);
-        if(GetConVarBool(g_hShowTimeLeft) && timelimit != 0)
-        {
-            new timeleft;
-            GetMapTimeLeft(timeleft);
-            
-            if(timeleft <= 0)
-            {
-                FormatEx(message, maxlength, "Time left: Map finished\n");
-            }
-            else if(timeleft < 60)
-            {
-                FormatEx(message, maxlength, "Time left: <1 minute\n");
-            }
-            else
-            {
-                // Format the time left
-                new minutes = RoundToFloor(float(timeleft)/60);
-                FormatEx(message, maxlength, "Time left: %d minutes\n", minutes);
-            }
-        }
-    }
-    
-    
-    if(!IsFakeClient(target))
-    {/*
-        if(settings & KH_RECORD)
-        {
-            Format(message, maxlength, "%s%s\n", message, g_sRecord[g_Type[target]][GetStyle(target)]);
-        }*/
-        
-        if(g_Type[client] == TIMER_MAIN)
-            FormatEx(message, maxlength, "Track: Main\n");
-        else
-        if(g_Type[client] == TIMER_BONUS)
-            FormatEx(message, maxlength, "Track: Bonus\n");
-        
-        
-        if(settings & KH_BEST)
-        {
-            new position;
-            Format(message, maxlength, "%s%s", message, g_sTime[target][g_Type[target]][GetStyle(target)]);
-            if(g_fTime[target][g_Type[target]][GetStyle(target)] != 0.0)
-            {
-                position = GetPlayerPositionByID(GetPlayerID(target), g_Type[target], GetStyle(target));
-                Format(message, maxlength, "%s (#%d)", message, position);
-            }
-        }
-    }
-    else if(g_bGhostPluginLoaded == true)
-    {
-        new Type, Style;
-        
-        if(GetBotInfo(target, Type, Style))
-        {
-            Format(message, maxlength, "%s%s\n\n", message, g_sRecord[Type][Style]);
-        }
-    }
-    
-    
-    if(settings & KH_SPECS)
-    {
-        Format(message, maxlength, "%s\nSpectators: %d\n", message, (g_bIsAdmin[client])?AdminSpecCount[target]:SpecCount[target]);
-    }
-    
-    if(settings & KH_SYNC)
-    {
-        new Style = g_Style[target][g_Type[target]];
-        
-        if(g_StyleConfig[Style][CalcSync] && g_bTiming[target])
-        {
-            if(Timer_InsideZone(target, MAIN_START) == -1 && Timer_InsideZone(target, BONUS_START) == -1)
-            {
-                if(g_bIsAdmin[client] == true)
-                {
-                    Format(message, maxlength, "%s\nSync 1: %.2f\n", message, GetClientSync(target));
-                    Format(message, maxlength, "%sSync 2: %.2f", message, GetClientSync2(target));
-                }
-                else
-                {
-                    Format(message, maxlength, "%s\nSync: %.2f", message, GetClientSync(target));
-                }
-            }
-        }
-    }
-    
-    return true;
 }
 
 Float:GetClientSync(client)
@@ -2348,10 +2241,8 @@ public Native_FinishTimer(Handle:plugin, numParams)
         FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 1);
         
         decl String:sType[32];
-        if(Type != TIMER_MAIN)
-        {
-            GetTypeName(Type, sType, sizeof(sType), false);
-        }
+
+        GetTypeName(Type, sType, sizeof(sType), false);
         
         decl String:sStyle[32];
         if(Style != 0)
@@ -2380,8 +2271,7 @@ public Native_FinishTimer(Handle:plugin, numParams)
             {
                 g_WorldRecord[Type][Style] = fTime;
                 
-                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sWR%s: %s (%N)", sType, g_StyleConfig[Style][Name], sTime, client);
-                
+                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "WR: %s", sTime);                
                 if(g_StyleConfig[Style][Count_Left_Strafe] || g_StyleConfig[Style][Count_Right_Strafe] || g_StyleConfig[Style][Count_Back_Strafe] || g_StyleConfig[Style][Count_Forward_Strafe])
                 {
                     CPrintToChatAll("%s%s New [%s%s%s - %s%s%s] Record done by %s%N%s in %s%s%s with %s%d%s jumps %s%d%s strafes.",
@@ -2547,7 +2437,7 @@ GetStyle(client)
 
 Float:GetClientTimer(client)
 {
-    return GetEngineTime() - g_fCurrentTime[client];
+    return g_fCurrentTime[client];
 }
 
 ReadStyleConfig()
@@ -2593,9 +2483,9 @@ ReadStyleConfig()
                 g_StyleConfig[Key][Require_Right]          = bool:KvGetNum(kv, "require_right");
                 g_StyleConfig[Key][Require_Back]           = bool:KvGetNum(kv, "require_back");
                 g_StyleConfig[Key][Require_Forward]        = bool:KvGetNum(kv, "require_forward");
-                g_StyleConfig[Key][Hud_Style]              = bool:KvGetNum(kv, "hud_style");
+                /*g_StyleConfig[Key][Hud_Style]              = bool:KvGetNum(kv, "hud_style");
                 g_StyleConfig[Key][Hud_Strafes]            = bool:KvGetNum(kv, "hud_strafes");
-                g_StyleConfig[Key][Hud_Jumps]              = bool:KvGetNum(kv, "hud_jumps");
+                g_StyleConfig[Key][Hud_Jumps]              = bool:KvGetNum(kv, "hud_jumps");*/
                 g_StyleConfig[Key][Count_Left_Strafe]      = bool:KvGetNum(kv, "count_left_strafe");
                 g_StyleConfig[Key][Count_Right_Strafe]     = bool:KvGetNum(kv, "count_right_strafe");
                 g_StyleConfig[Key][Count_Back_Strafe]      = bool:KvGetNum(kv, "count_back_strafe");
@@ -2608,9 +2498,9 @@ ReadStyleConfig()
                 g_StyleConfig[Key][SlowedSpeed]            = KvGetFloat(kv, "slowedspeed");
                 g_StyleConfig[Key][Special]                = bool:KvGetNum(kv, "special");
                 KvGetString(kv, "specialid", g_StyleConfig[Key][Special_Key], 32);
-                g_StyleConfig[Key][GunJump]                = bool:KvGetNum(kv, "gunjump");
+                /*g_StyleConfig[Key][GunJump]                = bool:KvGetNum(kv, "gunjump");
                 KvGetString(kv, "gunjump_weapon", g_StyleConfig[Key][GunJump_Weapon], 64);
-                g_StyleConfig[Key][UnrealPhys]             = bool:KvGetNum(kv, "unrealphys");
+                g_StyleConfig[Key][UnrealPhys]             = bool:KvGetNum(kv, "unrealphys");*/
                 g_StyleConfig[Key][AirAcceleration]       = KvGetNum(kv, "aa", 1000);
                 g_StyleConfig[Key][EnableBunnyhopping]    = bool:KvGetNum(kv, "enablebhop", true);
                 
@@ -3812,7 +3702,7 @@ LoadWorldRecordInfo()
                     
                     GetArrayString(g_hTimesUsers[Type][Style], 0, sUser, MAX_NAME_LENGTH);
                     
-                    Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sWR%s: %s (%s)", sTypeAbbr, sStyleAbbr, g_sRecord[Type][Style], sUser);
+                    Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sWR%s: %s", sTypeAbbr, sStyleAbbr, g_sRecord[Type][Style]);
                 }
                 else
                 {
@@ -4121,9 +4011,3 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
     
     g_Buttons[client] = buttons;
 }
-
-stock bool IsValidClient(int client, bool bAlive = false) // when bAlive is false = technical checks, when it's true = gameplay checks
-{
-	return (client >= 1 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client) && (!bAlive || IsPlayerAlive(client)));
-}
-

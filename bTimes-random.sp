@@ -53,6 +53,7 @@ new     //Handle:g_hAllowKeysAlive,
     Handle:g_hAllowKnifeDrop,
     Handle:g_WeaponDespawn,
     Handle:g_hNoDamage,
+    Handle:g_HideChatTriggers,
     Handle:g_hAllowHide;
     
 new    Handle:g_MessageStart,
@@ -86,6 +87,8 @@ public OnPluginStart()
     g_hNoDamage        = CreateConVar("timer_nodamage", "1", "Blocks all player damage when on", 0, true, 0.0, true, 1.0);
     g_hAllowHide       = CreateConVar("timer_allowhide", "1", "Allows players to use the !hide command", 0, true, 0.0, true, 1.0);
     
+    g_HideChatTriggers	= CreateConVar("timer_hidechatcmds", "1", "Hide any chat triggers", 0, true, 0.0, true, 1.0);
+    
     if(g_GameType == GameType_CSS)
     {
         g_MessageStart     = CreateConVar("timer_msgstart", "^556b2f[Timer] ^daa520- ", "Sets the start of all timer messages.");
@@ -116,17 +119,16 @@ public OnPluginStart()
     AddAmbientSoundHook(AmbientSHook);
     AddTempEntHook("Shotgun Shot", CSS_Hook_ShotgunShot);
     
-    // Command hooks
     AddCommandListener(DropItem, "drop");
-    AddCommandListener(Kill, "kill");
-    AddCommandListener(Kill, "explode");
-    
-    // Player commands
+    AddCommandListener(HookPlayerChat, "say");
+    AddCommandListener(HookPlayerChat, "say_team");
+    AddCommandListener(Command_Jointeam, "jointeam");
+
     RegConsoleCmdEx("sm_hide", SM_Hide, "Toggles hide");
     RegConsoleCmdEx("sm_unhide", SM_Hide, "Toggles hide");
-    //RegConsoleCmdEx("sm_keys", SM_Keys, "Toggles showing pressed keys");
-    //RegConsoleCmdEx("sm_pad", SM_Keys, "Toggles showing pressed keys");
-   // RegConsoleCmdEx("sm_showkeys", SM_Keys, "Toggles showing pressed keys");
+  //RegConsoleCmdEx("sm_keys", SM_Keys, "Toggles showing pressed keys");
+  //RegConsoleCmdEx("sm_pad", SM_Keys, "Toggles showing pressed keys");
+  //RegConsoleCmdEx("sm_showkeys", SM_Keys, "Toggles showing pressed keys");
     RegConsoleCmdEx("sm_spec", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_spectate", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_maptime", SM_Maptime, "Shows how long the current map has been on.");
@@ -545,27 +547,7 @@ public Action:Event_RoundStart(Handle:event, const String:name[], bool:dontBroad
 public Action:DropItem(client, const String:command[], argc)
 {
     new weaponIndex = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
-    
-    // For gun jump plugin, prevent dropping weapons required for the style
-    /*if(weaponIndex != -1)
-    {
-        new Style = GetClientStyle(client);
-        new Type  = GetClientTimerType(client);
-        
-        new Config[StyleConfig];
-        Style_GetConfig(Style, Config);
-        
-        if(Config[GunJump] && Config[AllowType][Type])
-        {
-            decl String:sWeapon[64];
-            GetEntityClassname(weaponIndex, sWeapon, sizeof(sWeapon));
-            
-            if(StrEqual(Config[GunJump_Weapon], sWeapon))
-                return Plugin_Handled;
-        }
-    }*/
-    
-    // Allow ghosts to drop all weapons and allow players if the cvar allows them to
+
     if(GetConVarBool(g_hAllowKnifeDrop) || IsFakeClient(client))
     {
         if(weaponIndex != -1)
@@ -579,15 +561,75 @@ public Action:DropItem(client, const String:command[], argc)
     return Plugin_Continue;
 }
 
-public Action Kill( int client, const char[] command, int argc )
+public Action Command_Jointeam(int client, const char[] command, int args)
 {
-	if ( !client ) return Plugin_Continue;
-    
-	if ( IsFakeClient(client) ) return Plugin_Continue;
-    
-	ChangeClientTeam( client, CS_TEAM_SPECTATOR );
+	if(!IsValidClient(client))
+	{
+		return Plugin_Continue;
+	}
 
-	return Plugin_Handled;
+	char[] arg1 = new char[8];
+	GetCmdArg(1, arg1, 8);
+
+	int iTeam = StringToInt(arg1);
+
+	// client is trying to join the same team he's in now.
+	// i'll let the game handle it.
+	if(GetClientTeam(client) == iTeam)
+	{
+		return Plugin_Continue;
+	}
+
+	bool bRespawn = false;
+
+	switch(iTeam)
+	{
+		case CS_TEAM_T:
+		{
+			// if T spawns are available in the map
+			bRespawn = true;
+
+			CS_SwitchTeam(client, CS_TEAM_T);
+		}
+
+		case CS_TEAM_CT:
+		{
+			bRespawn = true;
+
+			CS_SwitchTeam(client, CS_TEAM_CT);
+		}
+
+		// if they chose to spectate, i'll force them to join the spectators
+		case CS_TEAM_SPECTATOR:
+		{
+			CS_SwitchTeam(client, CS_TEAM_SPECTATOR);
+		}
+
+		default:
+		{
+			return Plugin_Continue;
+		}
+	}
+
+	if(bRespawn)
+	{
+		CS_RespawnPlayer(client);
+
+		return Plugin_Handled;
+	}
+
+	return Plugin_Continue;
+}
+
+public Action:HookPlayerChat(int client, const String:command[], int args)
+{
+	if(GetConVarBool(g_HideChatTriggers))
+	{
+		decl String:text[2];
+		GetCmdArg(1, text, 2);
+		return text[0] == '!' || text[0] == '/' ? Plugin_Handled:Plugin_Continue;
+	}
+	return Plugin_Continue;
 }
 
 // kill weapon and weapon attachments on drop
