@@ -182,6 +182,7 @@ public OnAllPluginsLoaded()
 public OnMapStart()
 {
     //set map start time
+    ServerCommand("mp_restartgame 1");
     g_fMapStart = GetEngineTime();
 }
 
@@ -580,23 +581,19 @@ public Action Command_Jointeam(int client, const char[] command, int args)
 		return Plugin_Continue;
 	}
 
-	bool bRespawn = false;
-
 	switch(iTeam)
 	{
 		case CS_TEAM_T:
 		{
 			// if T spawns are available in the map
-			bRespawn = true;
-
 			CS_SwitchTeam(client, CS_TEAM_T);
+			CS_RespawnPlayer(client);
 		}
 
 		case CS_TEAM_CT:
 		{
-			bRespawn = true;
-
 			CS_SwitchTeam(client, CS_TEAM_CT);
+			CS_RespawnPlayer(client);
 		}
 
 		// if they chose to spectate, i'll force them to join the spectators
@@ -609,13 +606,6 @@ public Action Command_Jointeam(int client, const char[] command, int args)
 		{
 			return Plugin_Continue;
 		}
-	}
-
-	if(bRespawn)
-	{
-		CS_RespawnPlayer(client);
-
-		return Plugin_Handled;
 	}
 
 	return Plugin_Continue;

@@ -228,7 +228,7 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_fps", SM_Fps, "Shows a list of every player's fps_max value.");
     RegConsoleCmdEx("sm_auto", SM_Auto, "Toggles auto bunnyhop.");
     RegConsoleCmdEx("sm_bhop", SM_Auto, "Toggles auto bunnyhop.");
-    RegConsoleCmdEx("sm_reloadstyle", SM_ReloadStyle, "Reload Style Config.");
+    RegAdminCmd("sm_reloadstyle", SM_ReloadStyle, ADMFLAG_ROOT, "Reload Style Config.");
     
     // Makes FindTarget() work properly
     LoadTranslations("common.phrases");
@@ -1210,11 +1210,15 @@ SetStyle(client, Type, Style)
     
     g_Style[client][Type] = Style;
     
-    StopTimer(client);
-    
-    if(!IsPlayerAlive(client))
+    if(GetClientTeam(client) == 1)
     {
+        ChangeClientTeam(client, 3);
         CS_RespawnPlayer(client);
+    }
+    
+    if ( !IsPlayerAlive( client ) )
+    {
+        CS_RespawnPlayer( client );
     }
     
     if(Type == TIMER_MAIN)
@@ -1521,6 +1525,8 @@ public Action:SM_DisableStyle(client, args)
 public Action SM_ReloadStyle(int client, int args)
 {
 	ReadStyleConfig();
+	
+	PrintToChat(client, "Style reloaded.");
 	
 	return Plugin_Handled;
 }
@@ -2245,10 +2251,9 @@ public Native_FinishTimer(Handle:plugin, numParams)
         GetTypeName(Type, sType, sizeof(sType), false);
         
         decl String:sStyle[32];
-        if(Style != 0)
-        {
-            GetStyleName(Style, sStyle, sizeof(sStyle), false);
-        }
+
+        GetStyleName(Style, sStyle, sizeof(sStyle), false);
+        
 
         new OldPosition, NewPosition, bool:NewTime = false;
         
@@ -2271,104 +2276,46 @@ public Native_FinishTimer(Handle:plugin, numParams)
             {
                 g_WorldRecord[Type][Style] = fTime;
                 
-                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "WR: %s", sTime);                
-                if(g_StyleConfig[Style][Count_Left_Strafe] || g_StyleConfig[Style][Count_Right_Strafe] || g_StyleConfig[Style][Count_Back_Strafe] || g_StyleConfig[Style][Count_Forward_Strafe])
+                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "WR: %s", sTime); 
+                for (int i = 0; i < 3; i++)
                 {
-                    CPrintToChatAll("%s%s New [%s%s%s - %s%s%s] Record done by %s%N%s in %s%s%s with %s%d%s jumps %s%d%s strafes.",
-                	    g_msg_start,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sType,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_StyleConfig[Style][Name],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    client,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sTime,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Jumps[client],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Strafes[client],
-                	    g_msg_textcol);
+                    CPrintToChatAll("%s%sNew %s%s %sRecord by %s%N %son %s%s %sin %s%s%s.",
+					g_msg_start,
+					g_msg_textcol,
+					g_msg_varcol,
+					sType,
+					g_msg_textcol,
+					g_msg_varcol,
+					client,
+					g_msg_textcol,
+					g_msg_varcol,
+					sStyle,
+					g_msg_textcol,
+					g_msg_varcol,
+					sTime,
+					g_msg_textcol);
                 }
-                else
-                {
-                	  CPrintToChatAll("%s%s New [%s%s%s - %s%s%s] Record done by %s%N%s in %s%s%s with %s%d%s jumps.",
-                	    g_msg_start,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sType,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_StyleConfig[Style][Name],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    client,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sTime,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Jumps[client],
-                	    g_msg_textcol);
-                }
+                
             }
             else
             {
-                if(g_StyleConfig[Style][Count_Left_Strafe] || g_StyleConfig[Style][Count_Right_Strafe] || g_StyleConfig[Style][Count_Back_Strafe] || g_StyleConfig[Style][Count_Forward_Strafe])
-                {
-                	CPrintToChatAll("%s%s%N%s finish [%s%s%s - %s%s%s] in %s%s%s (Rank:%s#%d%s) with %s%d%s jumps %s%d%s strafes.",
-                	    g_msg_start,
-                	    g_msg_varcol,
-                	    client,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sType,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_StyleConfig[Style][Name],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sTime,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    NewPosition,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Jumps[client],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Strafes[client],
-                	    g_msg_textcol);
-                }
-                else
-                {
-                    CPrintToChatAll("%s%s%N%s finish [%s%s%s - %s%s%s] in %s%s%s (Rank:%s%d%s) with %s%d%s jumps.",
-                	    g_msg_start,
-                	    g_msg_varcol,
-                	    client,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sType,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_StyleConfig[Style][Name],
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    NewPosition,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    sTime,
-                	    g_msg_textcol,
-                	    g_msg_varcol,
-                	    g_Jumps[client],
-                	    g_msg_textcol);
-                }
+                CPrintToChatAll("%s%s%N %sfinished in %s%s%s (%s#%d%s) on the %s%s %stimer using %s%s %sstyle.", 
+					g_msg_start,
+					g_msg_varcol,
+					client, 
+					g_msg_textcol,
+					g_msg_varcol,
+					sTime,
+					g_msg_textcol,
+					g_msg_varcol,
+					NewPosition,
+					g_msg_textcol,
+					g_msg_varcol,
+					sType,
+					g_msg_textcol,
+					g_msg_varcol,
+					sStyle,
+					g_msg_textcol);
             }
         }
         else
@@ -3779,50 +3726,50 @@ GetDirection(client)
 
 CheckSync(client, buttons, Float:vel[3], Float:angles[3])
 {
-    new Direction = GetDirection(client);
-    
-    if(Direction == 1 && GetClientVelocity(client, true, true, false) != 0)
-    {    
-        new flags = GetEntityFlags(client);
-        new MoveType:movetype = GetEntityMoveType(client);
-        if(!(flags & (FL_ONGROUND|FL_INWATER)) && (movetype != MOVETYPE_LADDER))
-        {
-            // Normalize difference
-            new Float:fAngleDiff = angles[1] - g_fOldAngle[client];
-            if (fAngleDiff > 180)
-                fAngleDiff -= 360;
-            else if(fAngleDiff < -180)
-                fAngleDiff += 360;
-            
-            // Add to good sync if client buttons match up
-            if(fAngleDiff > 0)
-            {
-                g_totalSync[client]++;
-                if((buttons & IN_MOVELEFT) && !(buttons & IN_MOVERIGHT))
-                {
-                    g_goodSync[client]++;
-                }
-                if(vel[1] < 0)
-                {
-                    g_goodSyncVel[client]++;
-                }
-            }
-            else if(fAngleDiff < 0)
-            {
-                g_totalSync[client]++;
-                if((buttons & IN_MOVERIGHT) && !(buttons & IN_MOVELEFT))
-                {
-                    g_goodSync[client]++;
-                }
-                if(vel[1] > 0)
-                {
-                    g_goodSyncVel[client]++;
-                }
-            }
-        }
-    }
-    
-    g_fOldAngle[client] = angles[1];
+	new Direction = GetDirection(client);
+	
+	if(Direction == 1 && GetClientVelocity(client, true, true, false) != 0)
+	{    
+		new flags = GetEntityFlags(client);
+		new MoveType:movetype = GetEntityMoveType(client);
+		if(!(flags & (FL_ONGROUND|FL_INWATER)) && (movetype != MOVETYPE_LADDER))
+		{
+			// Normalize difference
+			new Float:fAngleDiff = angles[1] - g_fOldAngle[client];
+			if (fAngleDiff > 180)
+				fAngleDiff -= 360;
+			else if(fAngleDiff < -180)
+				fAngleDiff += 360;
+			
+			// Add to good sync if client buttons match up
+			if(fAngleDiff > 0)
+			{
+				g_totalSync[client]++;
+				if((buttons & IN_MOVELEFT) && !(buttons & IN_MOVERIGHT))
+				{
+					g_goodSync[client]++;
+				}
+				if(vel[1] < 0)
+				{
+					g_goodSyncVel[client]++;
+				}
+			}
+			else if(fAngleDiff < 0)
+			{
+				g_totalSync[client]++;
+				if((buttons & IN_MOVERIGHT) && !(buttons & IN_MOVELEFT))
+				{
+					g_goodSync[client]++;
+				}
+				if(vel[1] > 0)
+				{
+					g_goodSyncVel[client]++;
+				}
+			}
+		}
+	}
+	
+	g_fOldAngle[client] = angles[1];
 }
 
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)

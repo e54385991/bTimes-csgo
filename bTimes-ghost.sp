@@ -83,7 +83,7 @@ public OnPluginStart()
 	DB_Connect();
 	
 	g_hGhostStartPauseTime = CreateConVar("timer_ghoststartpause", "5.0", "How long the ghost will pause before starting its run.");
-	g_hGhostEndPauseTime   = CreateConVar("timer_ghostendpause", "2.0", "How long the ghost will pause after it finishes its run.");
+	g_hGhostEndPauseTime   = CreateConVar("timer_ghostendpause", "5.0", "How long the ghost will pause after it finishes its run.");
 	
 	AutoExecConfig(true, "ghost", "timer");
 	
@@ -557,38 +557,6 @@ public Action:GhostCheck(Handle:timer, any:data)
 									{
 										if(!g_GhostPaused[Type][Style] && (0 < g_GhostFrame[Type][Style] < iSize))
 										{
-											/*decl String:sTime[32], String:sTimes[32], String:sStyle[16], String:sType[16];
-											
-											new Float:time = GetEngineTime() - g_fStartTime[Type][Style];
-											
-											float fSpeed[3];
-											
-											flReplayTick[Type][Style] = float(iSize) * GetTickInterval();
-											
-											
-											GetEntPropVector(target, Prop_Data, "m_vecVelocity", fSpeed);
-											
-											float fSpeed_New = SquareRoot(Pow(fSpeed[0], 2.0) + Pow(fSpeed[1], 2.0));
-											
-											FormatPlayerTime(time, sTime, sizeof(sTime), false, 0);
-											
-											GetStyleName(Style, sStyle, sizeof(sStyle));
-											
-											GetTypeName(Type, sType, sizeof(sType));
-											
-											FormatPlayerTime(g_fGhostTime[Type][Style], sTimes, sizeof(sTimes), false, 0);
-											
-											flPTS[Type][Style] = flReplayTick[Type][Style] / time * 100.0;
-											
-											PrintHintText(client, "<font size=\"16\" color=\"#%s\">Replay bot</font>\n<font size='16'>Run: %s\t\t\tRecord: %s\nStyle: %s\t\tReplay: %s (%.1f\%%%%)\nSpeed: %.f", 
-											gS_Colors[gI_StartCycle],
-											sType, 
-											sTimes,
-											sStyle,
-											sTime,
-											flPTS,
-											fSpeed_New);*/ 
-											
 											decl String:sTime[32], String:sStyle[16], String:keys[64];
 											new Float:time = GetEngineTime() - g_fStartTime[Type][Style];
 											FormatPlayerTime(time, sTime, sizeof(sTime), false, 0);
@@ -944,6 +912,7 @@ DeleteGhost(Type, Style)
 		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
 		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
+		CS_SetClientClanTag(g_Ghost[Type][Style], " ");
 		FakeClientCommand(g_Ghost[Type][Style], "kill");
 	}
 	

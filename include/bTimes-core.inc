@@ -371,3 +371,8 @@ stock AddSpaceToEnd(String:buffer[], maxlength)
 	if(strlen(buffer) > 0)
 		Format(buffer, maxlength, "%s ", buffer);
 }
+
+stock bool IsValidClient(int client, bool bAlive = false) // when bAlive is false = technical checks, when it's true = gameplay checks
+{
+	return (client >= 1 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client) && (!bAlive || IsPlayerAlive(client)));
+}

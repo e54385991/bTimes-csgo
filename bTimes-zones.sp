@@ -494,11 +494,18 @@ public Action:SM_ShowAC(int client, int args)
 
 public Action:SM_R(int client, int args)
 {
+
 	if(g_Properties[MAIN_START][Ready][0] == true)
 	{
+		if(!IsPlayerAlive(client))
+		{
+			CS_RespawnPlayer(client);
+		}
+		
 		if(GetClientTeam(client) <= 1) // 1 = spec
 		{
 			ChangeClientTeam(client, 2); // 1 = spectate, 2 = tt, 3 = ct
+			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, MAIN_START, 0, true);
 		}
@@ -525,11 +532,18 @@ public Action:SM_R(int client, int args)
 
 public Action:SM_End(int client, int args)
 {
+	
 	if(g_Properties[MAIN_END][Ready][0] == true)
 	{
+		if(!IsPlayerAlive(client))
+		{
+			CS_RespawnPlayer(client);
+		}
+		
 		if(GetClientTeam(client) <= 1)
 		{
 			ChangeClientTeam(client, 2);
+			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, MAIN_END, 0, true);
 		}
@@ -551,11 +565,19 @@ public Action:SM_End(int client, int args)
 
 public Action:SM_B(int client, int args)
 {
+	
 	if(g_Properties[BONUS_START][Ready][0] == true)
 	{
+		
+		if(!IsPlayerAlive(client))
+		{
+			CS_RespawnPlayer(client);
+		}
+		
 		if(GetClientTeam(client) <= 1)
 		{	
 			ChangeClientTeam(client, 3);
+			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, BONUS_START, 0, true);
 		}
@@ -582,11 +604,19 @@ public Action:SM_B(int client, int args)
 
 public Action:SM_EndB(int client, int args)
 {
+
 	if(g_Properties[BONUS_END][Ready][0] == true)
 	{
+		
+		if(!IsPlayerAlive(client))
+		{
+			CS_RespawnPlayer(client);
+		}
+		
 		if(GetClientTeam(client) <= 1)
 		{	
 			ChangeClientTeam(client, 3);
+			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, BONUS_END, 0, true);
 		}
