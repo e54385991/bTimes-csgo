@@ -48,9 +48,7 @@ new     g_iSoundEnts[2048];
 new     g_iNumSounds;
 
 // Settings
-new     //Handle:g_hAllowKeysAlive,
-    //Handle:g_hKeysShowsJumps,
-    Handle:g_hAllowKnifeDrop,
+new     Handle:g_hAllowKnifeDrop,
     Handle:g_WeaponDespawn,
     Handle:g_hNoDamage,
     Handle:g_HideChatTriggers,
@@ -66,7 +64,12 @@ new     String:g_msg_varcol[128] = {"\x07B4D398"};
 new     String:g_msg_textcol[128] = {"\x01"};
 
 //new bool:g_TimerGunJump;
- 
+
+// block radio
+char g_sRadioCommands[][] = {"coverme", "takepoint", "holdpos", "regroup", "followme", "takingfire", "go", "fallback", "sticktog",
+	"getinpos", "stormfront", "report", "roger", "enemyspot", "needbackup", "sectorclear", "inposition", "reportingin",
+	"getout", "negative", "enemydown", "compliment", "thanks", "cheer"};
+
 public OnPluginStart()
 {
     decl String:sGame[64];
@@ -80,27 +83,16 @@ public OnPluginStart()
         SetFailState("This timer does not support this game (%s)", sGame);
     
     // Server settings
-    //g_hAllowKeysAlive  = CreateConVar("timer_allowkeysalive", "1", "Allows players to see !keys while alive.", 0, true, 0.0, true, 1.0);
-    //g_hKeysShowsJumps  = CreateConVar("timer_keysshowsjumps", "1", "The !keys features shows when a player is using their jump button.", 0, true, 0.0, true, 1.0);
     g_hAllowKnifeDrop  = CreateConVar("timer_allowknifedrop", "1", "Allows players to drop any weapons (including knives and grenades)", 0, true, 0.0, true, 1.0);
     g_WeaponDespawn    = CreateConVar("timer_weapondespawn", "1", "Kills weapons a second after spawning to prevent flooding server.", 0, true, 0.0, true, 1.0);
     g_hNoDamage        = CreateConVar("timer_nodamage", "1", "Blocks all player damage when on", 0, true, 0.0, true, 1.0);
     g_hAllowHide       = CreateConVar("timer_allowhide", "1", "Allows players to use the !hide command", 0, true, 0.0, true, 1.0);
     
     g_HideChatTriggers	= CreateConVar("timer_hidechatcmds", "1", "Hide any chat triggers", 0, true, 0.0, true, 1.0);
-    
-    if(g_GameType == GameType_CSS)
-    {
-        g_MessageStart     = CreateConVar("timer_msgstart", "^556b2f[Timer] ^daa520- ", "Sets the start of all timer messages.");
-        g_MessageVar       = CreateConVar("timer_msgvar", "^B4D398", "Sets the color of variables in timer messages such as player names.");
-        g_MessageText      = CreateConVar("timer_msgtext", "^DAA520", "Sets the color of general text in timer messages.");
-    }
-    else if(g_GameType == GameType_CSGO)
-    {
-        g_MessageStart     = CreateConVar("timer_msgstart", "{default}[ {green}Timer{default} ] - ", "Sets the start of all timer messages. (Always keep the ^A after the first color code)");
-        g_MessageVar       = CreateConVar("timer_msgvar", "{lightblue}", "Sets the color of variables in timer messages such as player names.");
-        g_MessageText      = CreateConVar("timer_msgtext", "{grey}", "Sets the color of general text in timer messages.");
-    }
+
+    g_MessageStart     = CreateConVar("timer_msgstart", "{default}[ {green}Timer{default} ] - ", "Sets the start of all timer messages. (Always keep the ^A after the first color code)");
+    g_MessageVar       = CreateConVar("timer_msgvar", "{lightblue}", "Sets the color of variables in timer messages such as player names.");
+    g_MessageText      = CreateConVar("timer_msgtext", "{grey}", "Sets the color of general text in timer messages.");
     
     // Hook specific convars
     HookConVarChange(g_MessageStart, OnMessageStartChanged);
@@ -124,11 +116,13 @@ public OnPluginStart()
     AddCommandListener(HookPlayerChat, "say_team");
     AddCommandListener(Command_Jointeam, "jointeam");
 
+    for(int i = 0; i < sizeof(g_sRadioCommands); i++)
+    {
+        AddCommandListener(Command_Radio, g_sRadioCommands[i]);
+    }
+
     RegConsoleCmdEx("sm_hide", SM_Hide, "Toggles hide");
     RegConsoleCmdEx("sm_unhide", SM_Hide, "Toggles hide");
-  //RegConsoleCmdEx("sm_keys", SM_Keys, "Toggles showing pressed keys");
-  //RegConsoleCmdEx("sm_pad", SM_Keys, "Toggles showing pressed keys");
-  //RegConsoleCmdEx("sm_showkeys", SM_Keys, "Toggles showing pressed keys");
     RegConsoleCmdEx("sm_spec", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_spectate", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_maptime", SM_Maptime, "Shows how long the current map has been on.");
@@ -723,6 +717,11 @@ public Menu_SpecInfo(Handle:menu, MenuAction:action, param1, param2)
 {
     if(action == MenuAction_End)
         CloseHandle(menu);
+}
+
+public Action Command_Radio(int client, const char[] command, int args)
+{
+    return Plugin_Continue;
 }
 
 // Hide other players
