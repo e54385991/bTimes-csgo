@@ -1206,60 +1206,12 @@ public Action:Hook_SetTransmit(entity, client)
 
 public Action:Hook_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-    if(g_GameType == GameType_CSS)
-    {
-        SetEntPropVector(victim, Prop_Send, "m_vecPunchAngle", NULL_VECTOR);
-        SetEntPropVector(victim, Prop_Send, "m_vecPunchAngleVel", NULL_VECTOR);
-    }
-    
-    /*
-    if(g_TimerGunJump == true)
-    {
-        if(Timer_IsGunJump())
-        {
-            return Plugin_Continue;
-        }
-    }
-    */
-    
+    SetEntPropVector(victim, Prop_Send, "m_viewPunchAngle", NULL_VECTOR);
+    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngle", NULL_VECTOR);
+    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngleVel", NULL_VECTOR);
     return Plugin_Handled;
 }
- /*
-public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon, &subtype, &cmdnum, &tickcount, &seed, mouse[2])
-{    
-    // keys check
-    if(g_Settings[client] & SHOW_KEYS)
-    {
-        if((GetConVarBool(g_hAllowKeysAlive) && IsPlayerAlive(client)) || !IsPlayerAlive(client))
-        {
-            decl String:keys[64];
-            if(IsPlayerAlive(client))
-            {
-            	new Handle:hText = CreateHudSynchronizer();
-                GetKeysMessage(client, mouse[0], keys, sizeof(keys));
-                SetHudTextParams(0.5, 0.5, 1.0, 255, 255, 255, 255);
-                ShowSyncHudText(client, hText, keys);
-                CloseHandle(hText);
-            	
-            }
-            else
-            {
-                new Target      = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
-                new ObserverMode = GetEntProp(client, Prop_Send, "m_iObserverMode");
-                
-                if((0 < Target <= MaxClients) && (ObserverMode == 4 || ObserverMode == 5))
-                {
-                    new Handle:hText = CreateHudSynchronizer();
-                    GetKeysMessage(client, mouse[0], keys, sizeof(keys));
-                    SetHudTextParams(0.5, 0.5, 1.0, 255, 255, 255, 255);
-                    ShowSyncHudText(client, hText, keys);
-                    CloseHandle(hText);
-                }
-            }
-        }
-    }
-}
-*/
+
 // get a player's settings
 public Native_GetClientSettings(Handle:plugin, numParams)
 {
