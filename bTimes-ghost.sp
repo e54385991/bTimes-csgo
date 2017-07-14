@@ -503,6 +503,8 @@ public Action:GhostCheck(Handle:timer, any:data)
 					if(IsClientInGame(g_Ghost[Type][Style]))
 					{
 						
+						new iSize = GetArraySize(g_hGhost[Type][Style]);
+						
 						FakeClientCommand(g_Ghost[Type][Style], "drop");
 
 						decl String:sName[MAX_NAME_LENGTH];
@@ -512,7 +514,14 @@ public Action:GhostCheck(Handle:timer, any:data)
 						FormatEx(sClanTag, sizeof(sClanTag), "%s", sName);
 						if(!StrEqual("Replay -", sClanTag))
 						{
-							CS_SetClientClanTag(g_Ghost[Type][Style], sClanTag);
+							if(0 < g_GhostFrame[Type][Style] < iSize)
+							{
+								CS_SetClientClanTag(g_Ghost[Type][Style], sClanTag);
+							}
+							else
+							{
+								CS_SetClientClanTag(g_Ghost[Type][Style], "No Record");
+							}
 						}
 
 						// Check name
@@ -543,7 +552,6 @@ public Action:GhostCheck(Handle:timer, any:data)
 						}
 						
 						// Display ghost's current time to spectators
-						new iSize = GetArraySize(g_hGhost[Type][Style]);
 						for(new client = 1; client <= MaxClients; client++)
 						{
 							if(IsClientInGame(client))
@@ -912,7 +920,7 @@ DeleteGhost(Type, Style)
 		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
 		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
-		CS_SetClientClanTag(g_Ghost[Type][Style], " ");
+		CS_SetClientClanTag(g_Ghost[Type][Style], "No Record");
 		FakeClientCommand(g_Ghost[Type][Style], "kill");
 	}
 	
