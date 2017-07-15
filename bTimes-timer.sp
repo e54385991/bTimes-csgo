@@ -25,14 +25,6 @@ public Plugin:myinfo =
 #undef REQUIRE_PLUGIN
 #include <bTimes-ghost>
 
-enum
-{
-    GameType_CSS,
-    GameType_CSGO
-};
-
-new    g_GameType;
-
 // database
 new    Handle:g_DB;
 
@@ -123,9 +115,10 @@ new    Handle:g_fwdOnTimerFinished_Pre,
     Handle:g_fwdOnStyleChanged;
     
 new Handle:g_ConVar_AirAccelerate,
-    Handle:g_ConVar_EnableBunnyhopping,
-    Handle:g_ConVar_Autobunnyhopping;
+    Handle:g_ConVar_EnableBunnyhopping;
     
+ConVar g_ConVar_Autobunnyhopping;
+
 // Admin
 new    bool:g_bIsAdmin[MAXPLAYERS + 1];
 
@@ -161,16 +154,6 @@ char g_sPauseColors[][] =
 
 public OnPluginStart()
 {
-    decl String:sGame[64];
-    GetGameFolderName(sGame, sizeof(sGame));
-    
-    if(StrEqual(sGame, "cstrike"))
-        g_GameType = GameType_CSS;
-    else if(StrEqual(sGame, "csgo"))
-        g_GameType = GameType_CSGO;
-    else
-        SetFailState("This timer does not support this game (%s)", sGame);
-    
     // Connect to the database
     DB_Connect();
     
@@ -216,10 +199,6 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_practice", SM_Practice, "Puts you in noclip. Stops your timer.");
     RegConsoleCmdEx("sm_p", SM_Practice, "Puts you in noclip. Stops your timer.");
     RegConsoleCmdEx("sm_noclipme", SM_Practice, "Puts you in noclip. Stops your timer.");
-    RegConsoleCmdEx("sm_fullhud", SM_Fullhud, "Shows all info in the hint text when being timed.");
-    RegConsoleCmdEx("sm_maxinfo", SM_Fullhud, "Shows all info in the hint text when being timed.");
-    RegConsoleCmdEx("sm_display", SM_Fullhud, "Shows all info in the hint text when being timed.");
-    RegConsoleCmdEx("sm_hud", SM_Hud, "Change what shows up on the right side of your hud.");
     RegConsoleCmdEx("sm_truevel", SM_TrueVelocity, "Toggles between 2D and 3D velocity velocity meters");
     RegConsoleCmdEx("sm_velocity", SM_TrueVelocity, "Toggles between 2D and 3D velocity velocity meters");
     RegConsoleCmdEx("sm_pause", SM_Pause, "Pauses your timer and freezes you.");
@@ -503,36 +482,14 @@ public OnTimerChatChanged(MessageType, String:Message[])
     if(MessageType == 0)
     {
         Format(g_msg_start, sizeof(g_msg_start), Message);
-        ReplaceMessage(g_msg_start, sizeof(g_msg_start));
     }
     else if(MessageType == 1)
     {
         Format(g_msg_varcol, sizeof(g_msg_varcol), Message);
-        ReplaceMessage(g_msg_varcol, sizeof(g_msg_varcol));
     }
     else if(MessageType == 2)
     {
         Format(g_msg_textcol, sizeof(g_msg_textcol), Message);
-        ReplaceMessage(g_msg_textcol, sizeof(g_msg_textcol));
-    }
-}
-
-ReplaceMessage(String:message[], maxlength)
-{
-    if(g_GameType == GameType_CSS)
-    {
-        ReplaceString(message, maxlength, "^", "\x07", false);
-    }
-    else if(g_GameType == GameType_CSGO)
-    {
-        ReplaceString(message, maxlength, "^A", "\x0A");
-        ReplaceString(message, maxlength, "^1", "\x01");
-        ReplaceString(message, maxlength, "^2", "\x02");
-        ReplaceString(message, maxlength, "^3", "\x03");
-        ReplaceString(message, maxlength, "^4", "\x04");
-        ReplaceString(message, maxlength, "^5", "\x05");
-        ReplaceString(message, maxlength, "^6", "\x06");
-        ReplaceString(message, maxlength, "^7", "\x07");
     }
 }
 
@@ -767,27 +724,6 @@ public Action:SM_Auto(client, args)
                 }
             }
         }
-    }
-    
-    return Plugin_Handled;
-}
-
-// Toggles amount of info display in hint text area
-public Action:SM_Fullhud(client, args)
-{
-    SetClientSettings(client, GetClientSettings(client) ^ SHOW_HINT);
-    
-    if(GetClientSettings(client) & SHOW_HINT)
-    {
-        CPrintToChat(client, "%s%sShowing advanced timer hint text.", 
-            g_msg_start, 
-            g_msg_textcol);
-    }
-    else
-    {
-        CPrintToChat(client, "%s%sShowing simple timer hint text.", 
-            g_msg_start, 
-            g_msg_textcol);
     }
     
     return Plugin_Handled;
@@ -1383,13 +1319,6 @@ public Action:SM_Unpause(client, args)
     return Plugin_Handled;
 }
 
-public Action:SM_Hud(client, args)
-{
-    OpenHudMenu(client);
-    
-    return Plugin_Handled;
-}
-
 public Action:SM_Fps(client, args)
 {
     new Handle:hMenu = CreateMenu(Menu_Fps);
@@ -1413,60 +1342,6 @@ public Action:SM_Fps(client, args)
 public Menu_Fps(Handle:menu, MenuAction:action, param1, param2)
 {
     if(action == MenuAction_End)
-        CloseHandle(menu);
-}
-
-OpenHudMenu(client)
-{
-    new Handle:menu = CreateMenu(Menu_Hud);
-    SetMenuTitle(menu, "Hud control");
-    
-    new settings = GetClientSettings(client);
-    
-    decl String:sInfo[16];
-    
-    IntToString(KH_TIMELEFT, sInfo, sizeof(sInfo));
-    Format(sInfo, sizeof(sInfo), ";%s", sInfo);
-    AddMenuItem(menu, sInfo, (settings & KH_TIMELEFT)?"Timeleft: On":"Timeleft: Off");
-    
-    IntToString(KH_RECORD, sInfo, sizeof(sInfo));
-    Format(sInfo, sizeof(sInfo), ";%s", sInfo);
-    AddMenuItem(menu, sInfo, (settings & KH_RECORD)?"World record: On":"World record: Off");
-    
-    IntToString(KH_BEST, sInfo, sizeof(sInfo));
-    Format(sInfo, sizeof(sInfo), ";%s", sInfo);
-    AddMenuItem(menu, sInfo, (settings & KH_BEST)?"Personal best: On":"Personal best: Off");
-    
-    IntToString(KH_SPECS, sInfo, sizeof(sInfo));
-    Format(sInfo, sizeof(sInfo), ";%s", sInfo);
-    AddMenuItem(menu, sInfo, (settings & KH_SPECS)?"Spectator count: On":"Spectator count: Off");
-    
-    IntToString(KH_SYNC, sInfo, sizeof(sInfo));
-    Format(sInfo, sizeof(sInfo), ";%s", sInfo);
-    AddMenuItem(menu, sInfo, (settings & KH_SYNC)?"Sync: On":"Sync: Off");
-    
-    SetMenuExitButton(menu, true);
-    DisplayMenu(menu, client, MENU_TIME_FOREVER);
-}
-
-public Menu_Hud(Handle:menu, MenuAction:action, param1, param2)
-{
-    if(action == MenuAction_Select)
-    {
-        decl String:sInfo[32];
-        GetMenuItem(menu, param2, sInfo, sizeof(sInfo));
-        
-        if(sInfo[0] == ';')
-        {
-            ReplaceString(sInfo, sizeof(sInfo), ";", "");
-            
-            new iInfo = StringToInt(sInfo);
-            SetClientSettings(param1, GetClientSettings(param1) ^ iInfo);
-            
-            OpenHudMenu(param1);
-        }
-    }
-    else if(action == MenuAction_End)
         CloseHandle(menu);
 }
 
@@ -1740,11 +1615,11 @@ bool:GetHintMessage(client, String:buffer[], maxlength, SpecCount[], AdminSpecCo
 				Format(buffer, maxlength, "%sStyle: %s\t\t", buffer, g_StyleConfig[Style][Name]);
 			}
 			
-			Format(buffer, maxlength, "%s<font color=\"#%s\">No Timer\n</font>", buffer, g_sNoTimerColors[g_iNoTimerCycle]);
+			Format(buffer, maxlength, "%s<font color=\"#%s\">Timer Stopped\n</font>", buffer, g_sNoTimerColors[g_iNoTimerCycle]);
 			
 			if(!IsFakeClient(client))
 			{
-				if(strlen(g_sTime[target][g_Type[target]][GetStyle(target)]) > 11)
+				if(strlen(g_sTime[target][g_Type[target]][GetStyle(target)]) <= 40)
 				{
 					Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[target][g_Type[target]][GetStyle(target)]);
 				}
@@ -1796,7 +1671,7 @@ GetTimerAdvancedString(client, String:sResult[], maxlength, ward, SpecCount[], A
 	
 	if(!IsFakeClient(client))
 	{
-		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) > 11)
+		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) <= 40)
 		{
 			Format(sResult, maxlength, "%s%s\t\t", sResult, g_sTime[client][g_Type[client]][GetStyle(client)]);
 		}
@@ -1834,7 +1709,7 @@ GetTimerPauseString(client, String:buffer[], maxlength, ward, SpecCount[], Admin
 
 	if(!IsFakeClient(client))
 	{
-		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) > 11)
+		if(strlen(g_sTime[client][g_Type[client]][GetStyle(client)]) <= 40)
 		{
 			Format(buffer, maxlength, "%s%s\t\t", buffer, g_sTime[client][g_Type[client]][GetStyle(client)]);
 		}
@@ -1883,7 +1758,7 @@ void GetKeysMessage(int client, char[] keys, int maxlen)
 
 	Format(keys, maxlen, "");
 
-	if(JumpButtonsFix[client])
+	if(buttons & IN_JUMP && JumpButtonsFix[client])
 		Format(keys, maxlen, "%sJump\t\t   ", keys);
 	else
 		Format(keys, maxlen, "%s    \t\t   ", keys);
@@ -2430,9 +2305,6 @@ ReadStyleConfig()
                 g_StyleConfig[Key][Require_Right]          = bool:KvGetNum(kv, "require_right");
                 g_StyleConfig[Key][Require_Back]           = bool:KvGetNum(kv, "require_back");
                 g_StyleConfig[Key][Require_Forward]        = bool:KvGetNum(kv, "require_forward");
-                /*g_StyleConfig[Key][Hud_Style]              = bool:KvGetNum(kv, "hud_style");
-                g_StyleConfig[Key][Hud_Strafes]            = bool:KvGetNum(kv, "hud_strafes");
-                g_StyleConfig[Key][Hud_Jumps]              = bool:KvGetNum(kv, "hud_jumps");*/
                 g_StyleConfig[Key][Count_Left_Strafe]      = bool:KvGetNum(kv, "count_left_strafe");
                 g_StyleConfig[Key][Count_Right_Strafe]     = bool:KvGetNum(kv, "count_right_strafe");
                 g_StyleConfig[Key][Count_Back_Strafe]      = bool:KvGetNum(kv, "count_back_strafe");
@@ -3928,21 +3800,17 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
         // auto bhop check
         if(g_bAllowAuto)
         {
+        	
+            JumpButtonsFix[client] = bool:(buttons & IN_JUMP);
+        	
+            if(g_ConVar_Autobunnyhopping == null)
+            {
+                return;
+            }
+
             if(g_StyleConfig[Style][Auto] || (g_StyleConfig[Style][Freestyle] && g_StyleConfig[Style][Freestyle_Auto] && Timer_InsideZone(client, FREESTYLE, 1 << Style) != -1))
             {
-                if((GetClientSettings(client) & AUTO_BHOP) && IsPlayerAlive(client))
-                {
-                    if(!(GetEntityFlags(client) & FL_ONGROUND))
-                    {
-                        if(!(GetEntityMoveType(client) & MOVETYPE_LADDER))
-                        {
-                            if(GetEntProp(client, Prop_Data, "m_nWaterLevel") <= 1)
-                            {
-                                 buttons &= ~IN_JUMP;
-                            }
-                        }
-                    }
-                }
+                g_ConVar_Autobunnyhopping.BoolValue = true;
             }
         }
         
@@ -3950,8 +3818,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
         {
             if(Timer_InsideZone(client, MAIN_START, -1) != -1 || Timer_InsideZone(client, BONUS_START, -1) != -1)
             {
-                //buttons &= ~IN_JUMP;
-                SendConVarValue(client, g_ConVar_Autobunnyhopping, "0");
+                buttons &= ~IN_JUMP;
+                //SendConVarValue(client, g_ConVar_Autobunnyhopping, "0");
             }
         }
     }

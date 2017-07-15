@@ -53,9 +53,6 @@ new 	Float:g_fStartTime[MAX_TYPES][MAX_STYLES];
 // Cvars
 new	Handle:g_hGhostStartPauseTime,
 	Handle:g_hGhostEndPauseTime;
-	
-// Weapon control
-new	bool:g_bNewWeapon;
 
 // Hud colors
 int gI_StartCycle = 0;
@@ -649,16 +646,6 @@ void SpecCountToArrays(clients[])
 			}
 		}
 	}
-}
-
-public Action:Hook_WeaponCanUse(client, weapon)
-{
-	if(g_bNewWeapon == false)
-		return Plugin_Handled;
-	
-	g_bNewWeapon = false;
-	
-	return Plugin_Continue;
 }
 
 CalculateBotQuota()

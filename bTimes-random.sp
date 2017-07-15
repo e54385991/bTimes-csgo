@@ -106,6 +106,7 @@ public OnPluginStart()
     
     // Event hooks
     HookEvent("player_spawn", Event_PlayerSpawn_Post, EventHookMode_Post);
+    HookEvent("player_death", Event_PlayerDeath);
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
     AddNormalSoundHook(NormalSHook);
     AddAmbientSoundHook(AmbientSHook);
@@ -515,6 +516,25 @@ public Action:Event_PlayerSpawn_Post(Handle:event, const String:name[], bool:don
     SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);
     
     return Plugin_Continue;
+}
+
+public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
+{
+    new iClient = GetClientOfUserId(GetEventInt(event, "userid"));
+    if (IsClientInGame(iClient))
+    {
+        new iEntity = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
+        if (iEntity > MaxClients && IsValidEdict(iEntity))
+        {
+            CreateTimer(0.0, f_Dissolve, EntIndexToEntRef(iEntity), TIMER_FLAG_NO_MAPCHANGE);
+        }
+	}
+}
+
+public Action:f_Dissolve(Handle:hTimer, any:ref)  
+{  
+    new iEntity = EntRefToEntIndex(ref);
+    if(iEntity != INVALID_ENT_REFERENCE) AcceptEntityInput(iEntity, "Kill");
 }
 
 public Action:Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
@@ -1038,16 +1058,7 @@ public Action:SM_Sound(client, args)
     
     IntToString(STOP_MUSIC, sInfo, sizeof(sInfo));
     AddMenuItem(menu, sInfo, (g_Settings[client] & STOP_MUSIC)?"Music: Off":"Music: On");
-    
-    IntToString(STOP_RECSND, sInfo, sizeof(sInfo));
-    AddMenuItem(menu, sInfo, (g_Settings[client] & STOP_RECSND)?"WR sound: Off":"WR sound: On");
-    
-    IntToString(STOP_RECSND, sInfo, sizeof(sInfo));
-    AddMenuItem(menu, sInfo, (g_Settings[client] & STOP_PBSND)?"Personal best sound: Off":"Personal best sound: On");
-    
-    IntToString(STOP_RECSND, sInfo, sizeof(sInfo));
-    AddMenuItem(menu, sInfo, (g_Settings[client] & STOP_FAILSND)?"No new time sound: Off":"No new time sound: On");
-    
+
     SetMenuExitButton(menu, true);
     DisplayMenu(menu, client, MENU_TIME_FOREVER);
     
