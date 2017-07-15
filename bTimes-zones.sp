@@ -504,7 +504,7 @@ public Action:SM_R(int client, int args)
 		
 		if(GetClientTeam(client) <= 1) // 1 = spec
 		{
-			ChangeClientTeam(client, 2); // 1 = spectate, 2 = tt, 3 = ct
+			ChangeClientTeam(client, GetRandomInt(2, 3)); // 1 = spectate, 2 = tt, 3 = ct
 			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, MAIN_START, 0, true);
@@ -542,7 +542,7 @@ public Action:SM_End(int client, int args)
 		
 		if(GetClientTeam(client) <= 1)
 		{
-			ChangeClientTeam(client, 2);
+			ChangeClientTeam(client, GetRandomInt(2, 3));
 			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, MAIN_END, 0, true);
@@ -576,7 +576,7 @@ public Action:SM_B(int client, int args)
 		
 		if(GetClientTeam(client) <= 1)
 		{	
-			ChangeClientTeam(client, 3);
+			ChangeClientTeam(client, GetRandomInt(2, 3));
 			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, BONUS_START, 0, true);
@@ -615,7 +615,7 @@ public Action:SM_EndB(int client, int args)
 		
 		if(GetClientTeam(client) <= 1)
 		{	
-			ChangeClientTeam(client, 3);
+			ChangeClientTeam(client, GetRandomInt(2, 3));
 			CS_RespawnPlayer(client);
 			StopTimer(client);
 			TeleportToZone(client, BONUS_END, 0, true);
@@ -746,7 +746,7 @@ public Menu_AddZone(Handle:menu, MenuAction:action, client, param2)
 	{
 		decl String:info[32];
 		GetMenuItem(menu, param2, info, sizeof(info));
-		
+		//Todo-List:Check if player is alive
 		CreateZone(client, StringToInt(info));
 		
 		OpenAddZoneMenu(client);

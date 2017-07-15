@@ -37,7 +37,7 @@ enum
 
 new g_GameType;
  
-new    g_Settings[MAXPLAYERS+1] = {SHOW_HINT, ...},
+new    g_Settings[MAXPLAYERS+1] = {AUTO_BHOP},
     bool:g_bHooked;
     
 new     Float:g_fMapStart;
@@ -245,7 +245,7 @@ public OnClientCookiesCached(client)
     
     if(strlen(cookies) == 0)
     {
-        g_Settings[client] = SHOW_HINT|AUTO_BHOP|KH_TIMELEFT|KH_SYNC|KH_RECORD|KH_BEST|KH_SPECS;
+        g_Settings[client] = AUTO_BHOP;
     }
     else
     {
@@ -947,102 +947,6 @@ public Action:SM_Maptime(client, args)
         (seconds==1)?"second":"seconds");
 }
 
-// Show player key presses
-public Action:SM_Keys(client, args)
-{
-    SetClientSettings(client, GetClientSettings(client) ^ SHOW_KEYS);
-    
-    if(g_Settings[client] & SHOW_KEYS)
-    {
-        CPrintToChat(client, "%s%sShowing key presses",
-            g_msg_start,
-            g_msg_textcol);
-    }
-    else
-    {
-        PrintCenterText(client, "");
-        
-        CPrintToChat(client, "%s%sNo longer showing key presses",
-            g_msg_start,
-            g_msg_textcol);
-    }
-    
-    return Plugin_Handled;
-}
-/*
-GetKeysMessage(client, mouse, String:sKeys[], maxlen)
-{
-    new buttons = GetClientButtons(client);
-    
-    decl String:sForward[1], String:sBack[1], String:sMoveleft[2], String:sMoveright[2];
-    decl String:sTurnLeft[8], String:sTurnRight[8];
-    
-    if(buttons & IN_FORWARD)
-        sForward[0] = 'W';
-    else
-        sForward[0] = 32;
-        
-    if(buttons & IN_MOVELEFT)
-    {
-        sMoveleft[0] = 'A';
-        sMoveleft[1] = 0;
-    }
-    else
-    {
-        sMoveleft[0] = 32;
-        sMoveleft[1] = 32;
-    }
-    
-    if(buttons & IN_MOVERIGHT)
-    {
-        sMoveright[0] = 'D';
-        sMoveright[1] = 0;
-    }
-    else
-    {
-        sMoveright[0] = 32;
-        sMoveright[1] = 32;
-    }
-    
-    if(mouse < 0)
-    {
-        FormatEx(sTurnLeft, sizeof(sTurnLeft), "←");
-    }
-    else
-    {
-        FormatEx(sTurnLeft, sizeof(sTurnLeft), "    ");
-    }
-    
-    if(mouse > 0)
-    {
-        FormatEx(sTurnRight, sizeof(sTurnRight), "→");
-    }
-    else
-    {
-        FormatEx(sTurnRight, sizeof(sTurnRight), "    ");
-    }
-    
-    if(buttons & IN_BACK)
-        sBack[0] = 'S';
-    else
-        sBack[0] = 32;
-    
-    Format(sKeys, maxlen, "   %s\n%s%s     %s%s\n    %s", sForward, sTurnLeft, sMoveleft, sMoveright, sTurnRight, sBack);
-    
-    if(buttons & IN_DUCK)
-        Format(sKeys, maxlen, "%s\nDUCK", sKeys);
-    else
-        Format(sKeys, maxlen, "%s\n ", sKeys);
-        
-    if(GetConVarBool(g_hKeysShowsJumps))
-    {
-        if(buttons & IN_JUMP)
-            Format(sKeys, maxlen, "%s\nJUMP", sKeys);
-        else
-            Format(sKeys, maxlen, "%s\n ", sKeys);
-    }
-}*/
-
 // Open sound control menu
 public Action:SM_Sound(client, args)
 {
@@ -1217,9 +1121,9 @@ public Action:Hook_SetTransmit(entity, client)
 
 public Action:Hook_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
 {
-    SetEntPropVector(victim, Prop_Send, "m_viewPunchAngle", NULL_VECTOR);
-    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngle", NULL_VECTOR);
-    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngleVel", NULL_VECTOR);
+    SetEntPropVector(victim, Prop_Send, "m_viewPunchAngle", view_as<float>({0.0, 0.0, 0.0}));
+    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngle", view_as<float>({0.0, 0.0, 0.0}));
+    SetEntPropVector(victim, Prop_Send, "m_aimPunchAngleVel", view_as<float>({0.0, 0.0, 0.0}));
     return Plugin_Handled;
 }
 
