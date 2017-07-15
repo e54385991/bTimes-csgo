@@ -54,6 +54,8 @@ new 	Float:g_fStartTime[MAX_TYPES][MAX_STYLES];
 new	Handle:g_hGhostStartPauseTime,
 	Handle:g_hGhostEndPauseTime;
 
+ConVar g_hBotQuota;
+
 // Hud colors
 int gI_StartCycle = 0;
 
@@ -89,6 +91,9 @@ public OnPluginStart()
 	
 	// Create admin command that deletes the ghost
 	RegAdminCmd("sm_deleteghost", SM_DeleteGhost, ADMFLAG_CHEATS, "Deletes the ghost.");
+	
+	g_hBotQuota = FindConVar("bot_quota");
+	g_hBotQuota.Flags &= ~FCVAR_NOTIFY;
 	
 	new Handle:hBotDontShoot = FindConVar("bot_dont_shoot");
 	SetConVarFlags(hBotDontShoot, GetConVarFlags(hBotDontShoot) & ~FCVAR_CHEAT);
@@ -194,6 +199,13 @@ public OnMapStart()
 	{
 		// Create ghost data directory if it doesn't exist
 		CreateDirectory(sPath, 511);
+	}
+	
+	ConVar bot_controllable = FindConVar("bot_controllable");
+	
+	if(bot_controllable != null)
+	{
+		bot_controllable.BoolValue = false;
 	}
 	
 	// Timer to check ghost things such as clan tag
@@ -453,8 +465,7 @@ AssignToReplay(client)
 
 public Action:GhostCheck(Handle:timer, any:data)
 {
-	new Handle:hBotQuota = FindConVar("bot_quota");
-	new iBotQuota = GetConVarInt(hBotQuota);
+	new iBotQuota = GetConVarInt(g_hBotQuota);
 	
 	if(iBotQuota != g_iBotQuota)
 		ServerCommand("bot_quota %d", g_iBotQuota);
@@ -668,13 +679,12 @@ CalculateBotQuota()
 		}
 	}
 	
-	new Handle:hBotQuota = FindConVar("bot_quota");
-	new iBotQuota = GetConVarInt(hBotQuota);
+	new iBotQuota = GetConVarInt(g_hBotQuota);
 	
 	if(iBotQuota != g_iBotQuota)
 		ServerCommand("bot_quota %d", g_iBotQuota);
 	
-	CloseHandle(hBotQuota);
+	
 }
 
 LoadGhost()
