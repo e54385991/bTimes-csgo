@@ -1884,11 +1884,6 @@ public Action:OnTimerStart_Pre(client, Type, Style)
     // Don't start if their speed isn't default
     if(GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") != 1.0)
     {
-        WarnClient(client, "%s%sYour movement speed is off. Type %s!normalspeed%s to set it to default.", 30.0,
-            g_msg_start,
-            g_msg_textcol,
-            g_msg_varcol,
-            g_msg_textcol);
         return Plugin_Handled;
     }
     
@@ -2073,7 +2068,7 @@ public Action:OnTimerFinished_Pre(client, Type, Style)
     {
         return Plugin_Handled;
     }
-    
+
     // Anti-cheat sideways
     if(g_StyleConfig[Style][Special] == true)
     {
@@ -3776,6 +3771,11 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
                             g_msg_textcol);
                     }
                 }
+            }
+            
+            if(GetEntityMoveType(client) == MOVETYPE_NOCLIP)
+            {
+                StopTimer(client);
             }
             
             // Pausing
