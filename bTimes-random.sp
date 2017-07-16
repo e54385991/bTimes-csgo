@@ -486,7 +486,7 @@ public OnEntityCreated(entity, const String:classname[])
     {
         if(IsValidEdict(entity) && IsValidEntity(entity))
         {
-            CreateTimer(1.0, KillEntity, EntIndexToEntRef(entity));
+            CreateTimer(0.2, KillEntity, EntIndexToEntRef(entity));
         }
     }
 }

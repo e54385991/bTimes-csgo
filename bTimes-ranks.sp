@@ -26,13 +26,6 @@ public Plugin:myinfo =
 #define CC_MSGCOL 1<<1
 #define CC_NAME 1<<2
 
-enum
-{
-	GameType_CSS,
-	GameType_CSGO
-};
-
-new g_GameType;
 
 new 	Handle:g_DB;
 new	Handle:g_MapList;
@@ -81,13 +74,6 @@ public OnPluginStart()
 {
 	decl String:sGame[64];
 	GetGameFolderName(sGame, sizeof(sGame));
-	
-	if(StrEqual(sGame, "cstrike"))
-		g_GameType = GameType_CSS;
-	else if(StrEqual(sGame, "csgo"))
-		g_GameType = GameType_CSGO;
-	else
-		SetFailState("This timer does not support this game (%s)", sGame);
 	
 	// Connect to the database
 	DB_Connect();
@@ -208,17 +194,14 @@ public OnTimerChatChanged(MessageType, String:Message[])
 	if(MessageType == 0)
 	{
 		Format(g_msg_start, sizeof(g_msg_start), Message);
-		ReplaceMessage(g_msg_start, sizeof(g_msg_start));
 	}
 	else if(MessageType == 1)
 	{
 		Format(g_msg_varcol, sizeof(g_msg_varcol), Message);
-		ReplaceMessage(g_msg_varcol, sizeof(g_msg_varcol));
 	}
 	else if(MessageType == 2)
 	{
 		Format(g_msg_textcol, sizeof(g_msg_textcol), Message);
-		ReplaceMessage(g_msg_textcol, sizeof(g_msg_textcol));
 	}
 }
 
@@ -248,26 +231,6 @@ public OnStylesLoaded()
 				g_hMapsDoneHndlRef[Type][Style] = CreateArray();
 			}
 		}
-	}
-}
-
-ReplaceMessage(String:message[], maxlength)
-{
-	if(g_GameType == GameType_CSS)
-	{
-		ReplaceString(message, maxlength, "^", "\x07", false);
-	}
-	else if(g_GameType == GameType_CSGO)
-	{
-		ReplaceString(message, maxlength, "^A", "\x0A");
-		ReplaceString(message, maxlength, "^1", "\x01");
-		ReplaceString(message, maxlength, "^2", "\x02");
-		ReplaceString(message, maxlength, "^3", "\x03");
-		ReplaceString(message, maxlength, "^4", "\x04");
-		ReplaceString(message, maxlength, "^5", "\x05");
-		ReplaceString(message, maxlength, "^6", "\x06");
-		ReplaceString(message, maxlength, "^7", "\x07");
-		ReplaceString(message, maxlength, "^8", "\x10");
 	}
 }
 
@@ -304,67 +267,52 @@ public Action:OnChatMessage(&author, Handle:recipients, String:name[], String:me
 
 FormatTag(client, String:buffer[], maxlength)
 {
-	ReplaceString(buffer, maxlength, "{white}", "\x01", true);
-	ReplaceString(buffer, maxlength, "{red}", "\x02", true);
-	ReplaceString(buffer, maxlength, "{team}", "\x03", true);
-	ReplaceString(buffer, maxlength, "{green}", "\x04", true);
-	ReplaceString(buffer, maxlength, "{lightgreen}", "\x05", true);
-	ReplaceString(buffer, maxlength, "{limegreen}", "\x06", true);
-	ReplaceString(buffer, maxlength, "{lightred}", "\x07", true);
-	ReplaceString(buffer, maxlength, "{lime}", "\x08", true);
-	ReplaceString(buffer, maxlength, "{lightyellow}", "\x09", true);
-	ReplaceString(buffer, maxlength, "{gold}", "\x10", true);
-	ReplaceString(buffer, maxlength, "{lighterblue}", "\x0A", true);
-	ReplaceString(buffer, maxlength, "{skyblue}", "\x0B", true);
-	ReplaceString(buffer, maxlength, "{blue}", "\x0C", true);
-	ReplaceString(buffer, maxlength, "{bluegrey}", "\x0D", true);
-	ReplaceString(buffer, maxlength, "{pink}", "\x0E", true);
-	ReplaceString(buffer, maxlength, "{lighterred}", "\x0F", true);
-
-	new rand[3], String:sRandHex[15];
+	
+	char RandomColor[][] =
+	{
+		"\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08", "\x09", "\x10", "\x0B", "\x0C", "\x0E", "\x0F"
+	};
+	
 	while(StrContains(buffer, "{rand}", true) != -1)
 	{
-		for(new i=0; i<3; i++)
-			rand[i] = GetRandomColor();
-		
-		FormatEx(sRandHex, sizeof(sRandHex), "%s%s%s", rand[0], rand[1], rand[2]);
-		ReplaceStringEx(buffer, maxlength, "{rand}", sRandHex);
+		ReplaceString(buffer, maxlength, "{rand}", RandomColor[GetRandomInt(0, sizeof(RandomColor) - 1)]);
 	}
+
+	ReplaceString(buffer, maxlength, "{team}", "\x03", true);
 	
-	ReplaceString(buffer, maxlength, "{norm}", "\x01", true);
+	ReplaceString(buffer, maxlength, "{white}", "\x01", true);
 	
+	ReplaceString(buffer, maxlength, "{red}", "\x02", true);
+	
+	ReplaceString(buffer, maxlength, "{green}", "\x04", true);
+	
+	ReplaceString(buffer, maxlength, "{lightreen}", "\x05", true);
+	
+	ReplaceString(buffer, maxlength, "{limegreen}", "\x06", true);
+	
+	ReplaceString(buffer, maxlength, "{lightred}", "\x07", true);
+	
+	ReplaceString(buffer, maxlength, "{gray}", "\x08", true);
+	ReplaceString(buffer, maxlength, "{grey}", "\x08", true);
+	
+	ReplaceString(buffer, maxlength, "{lightyellow}", "\x09", true);
+	
+	ReplaceString(buffer, maxlength, "{gold}", "\x10", true);
+	
+	ReplaceString(buffer, maxlength, "{skyblue}", "\x0B", true);
+	
+	ReplaceString(buffer, maxlength, "{blue}", "\x0C", true);
+	
+	ReplaceString(buffer, maxlength, "{pink}", "\x0E", true);
+
+	ReplaceString(buffer, maxlength, "{lighterred}", "\x0F", true);
+
 	if(0 < client <= MaxClients)
 	{
 		decl String:sName[MAX_NAME_LENGTH];
 		GetClientName(client, sName, sizeof(sName));
 		ReplaceString(buffer, maxlength, "{name}", sName, true);
 	}
-}
-
-GetRandomColor()
-{
-	switch(GetRandomInt(1, 16))
-	{
-		case  1: return '\x01';
-		case  2: return '\x02';
-		case  3: return '\x03';
-		case  4: return '\x03';
-		case  5: return '\x04';
-		case  6: return '\x05';
-		case  7: return '\x06';
-		case  8: return '\x07';
-		case  9: return '\x08';
-		case 10: return '\x09';
-		case 11: return '\x10';
-		case 12: return '\x0A';
-		case 13: return '\x0B';
-		case 14: return '\x0C';
-		case 15: return '\x0E';
-		case 16: return '\x0F';
-		default: return '\x01';
-	}
-
-	return '\x01';
 }
 
 GetChatName(client, String:buffer[], maxlength)
@@ -1103,32 +1051,33 @@ public Action:SM_Colorhelp(client, args)
 			g_msg_textcol);
 	}
 	PrintToConsole(client, "\n\n");
-	PrintToConsole(client, "======================== CUSTOM CHAT ========================");
+	PrintToConsole(client, "======================== CUSTOM CHAT usage ========================");
 	PrintToConsole(client, " sm_ccname <arg> to set your name.");
 	PrintToConsole(client, " sm_ccname without an argument to turn colored name off.");
 	
 	PrintToConsole(client, " sm_ccmsg <arg> to set your message.");
 	PrintToConsole(client, " sm_ccmsg without an argument to turn colored message off.");
 	PrintToConsole(client, "====================== Custom chat functions ======================");
-	PrintToConsole(client, " {name} will be replaced with your STEAM name.");
-	PrintToConsole(client, " {team} will be replaced with TEAM color.");
-	PrintToConsole(client, " {white} will be replaced with WHITE color.");
-	PrintToConsole(client, " {red} will be replaced with a RED color.");
-	PrintToConsole(client, " {green} will be replaced with a GREEN color.");
-	PrintToConsole(client, " {lime} will be replaced with a LIME color.");
-	PrintToConsole(client, " {lightgreen} will be replaced with a LIGHTGREEN color.");
-	PrintToConsole(client, " {limegreen} will be replaced with a LIEGREEN color.");
-	PrintToConsole(client, " {lightred} will be replaced with a LIGHTRED color.");
-	PrintToConsole(client, " {gray} will be replaced with a GRAY color.");
-	PrintToConsole(client, " {lightyellow} will be replaced with a LIGHYELLOW color.");
-	PrintToConsole(client, " {gold} will be replaced with a GOLD color.");
-	PrintToConsole(client, " {bluegrey} will be replaced with a BLUEGREY color.");
-	PrintToConsole(client, " {blue} will be replaced with a BLUE color.");
-	PrintToConsole(client, " {lighterblue} will be replaced with a LIGHTERBLUE color.");
-	PrintToConsole(client, " {blue} will be replaced with a BLUE color.");
-	PrintToConsole(client, " {pink} will be replaced with PINK color.");
-	PrintToConsole(client, " {lighterred} will be replaced with LIGHTERRED color.");
-	PrintToConsole(client, " {rand} will be replaced with a RANDOM color.");
+	PrintToConsole(client, " {name} You name");
+	PrintToConsole(client, "====================== Custom chat color-list ======================");
+	PrintToConsole(client, " {team}");
+	PrintToConsole(client, " {white}");
+	PrintToConsole(client, " {red} ");
+	PrintToConsole(client, " {green}");
+	PrintToConsole(client, " {limegreen}");
+	PrintToConsole(client, " {lightgreen}");
+	PrintToConsole(client, " {limegreen}");
+	PrintToConsole(client, " {lightred}");
+	PrintToConsole(client, " {gray}");
+	PrintToConsole(client, " {lightyellow}");
+	PrintToConsole(client, " {gold}");
+	PrintToConsole(client, " {bluegrey}");
+	PrintToConsole(client, " {blue}");
+	PrintToConsole(client, " {lighterblue}");
+	PrintToConsole(client, " {blue}");
+	PrintToConsole(client, " {pink}");
+	PrintToConsole(client, " {lighterred}");
+	PrintToConsole(client, " {rand}");
 	PrintToConsole(client, "===========================================================");
 	PrintToConsole(client, "\n\n");
 	
