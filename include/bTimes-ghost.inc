@@ -3,6 +3,8 @@
 #endif
 #define _ghost_included
 
+#define TOTAL_BOTS 3
+
 enum
 {
     RECFRM_POS[3],

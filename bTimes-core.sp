@@ -387,6 +387,9 @@ DB_Connect()
 	{
 		decl String:query[512];
 		
+		//UNICODE!!!!!!!!!!!!!111111111111!!!!!!!!!111111111111111111
+		SQL_SetCharset(g_DB, "utf8");
+		
 		// Create maps table
 		Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS maps(MapID INTEGER NOT NULL AUTO_INCREMENT, MapName TEXT, MapPlaytime INTEGER NOT NULL, LastPlayed INTEGER NOT NULL, PRIMARY KEY (MapID))");
 		SQL_TQuery(g_DB, DB_Connect_Callback, query);
