@@ -28,14 +28,6 @@ public Plugin:myinfo =
 #define HUD_OFF (1<<0|1<<3|1<<4|1<<8)
 #define HUD_ON  0
 #define HUD_FUCK (1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<8|1<<9|1<<10|1<<11)
-
-enum
-{
-    GameType_CSS,
-    GameType_CSGO
-};
-
-new g_GameType;
  
 new    g_Settings[MAXPLAYERS+1] = {AUTO_BHOP},
     bool:g_bHooked;
@@ -65,23 +57,8 @@ new     String:g_msg_textcol[128] = {"\x01"};
 
 //new bool:g_TimerGunJump;
 
-// block radio
-char g_sRadioCommands[][] = {"coverme", "takepoint", "holdpos", "regroup", "followme", "takingfire", "go", "fallback", "sticktog",
-	"getinpos", "stormfront", "report", "roger", "enemyspot", "needbackup", "sectorclear", "inposition", "reportingin",
-	"getout", "negative", "enemydown", "compliment", "thanks", "cheer"};
-
 public OnPluginStart()
 {
-    decl String:sGame[64];
-    GetGameFolderName(sGame, sizeof(sGame));
-    
-    if(StrEqual(sGame, "cstrike"))
-        g_GameType = GameType_CSS;
-    else if(StrEqual(sGame, "csgo"))
-        g_GameType = GameType_CSGO;
-    else
-        SetFailState("This timer does not support this game (%s)", sGame);
-    
     // Server settings
     g_hAllowKnifeDrop  = CreateConVar("timer_allowknifedrop", "1", "Allows players to drop any weapons (including knives and grenades)", 0, true, 0.0, true, 1.0);
     g_WeaponDespawn    = CreateConVar("timer_weapondespawn", "1", "Kills weapons a second after spawning to prevent flooding server.", 0, true, 0.0, true, 1.0);
@@ -117,10 +94,34 @@ public OnPluginStart()
     AddCommandListener(HookPlayerChat, "say_team");
     AddCommandListener(Command_Jointeam, "jointeam");
 
-    for(int i = 0; i < sizeof(g_sRadioCommands); i++)
-    {
-        AddCommandListener(Command_Radio, g_sRadioCommands[i]);
-    }
+    AddCommandListener( Command_Radio, "radio1" );
+    AddCommandListener( Command_Radio, "radio2" );
+    AddCommandListener( Command_Radio, "radio3" );
+    
+    AddCommandListener( Command_Radio, "coverme" );
+    AddCommandListener( Command_Radio, "enemydown" );
+    AddCommandListener( Command_Radio, "enemyspot" );
+    AddCommandListener( Command_Radio, "fallback" );
+    AddCommandListener( Command_Radio, "followme" );
+    AddCommandListener( Command_Radio, "getout" );
+    AddCommandListener( Command_Radio, "go" );
+    AddCommandListener( Command_Radio, "holdpos" );
+    AddCommandListener( Command_Radio, "inposition" );
+    AddCommandListener( Command_Radio, "needbackup" );
+    AddCommandListener( Command_Radio, "negative" );
+    AddCommandListener( Command_Radio, "regroup" );
+    AddCommandListener( Command_Radio, "report" );
+    AddCommandListener( Command_Radio, "reportingin" );
+    AddCommandListener( Command_Radio, "roger" );
+    AddCommandListener( Command_Radio, "sectorclear" );
+    AddCommandListener( Command_Radio, "sticktog" );
+    AddCommandListener( Command_Radio, "stormfront" );
+    AddCommandListener( Command_Radio, "takepoint" );
+    AddCommandListener( Command_Radio, "takingfire" );
+    
+    AddCommandListener( Command_Radio, "cheer" );
+    AddCommandListener( Command_Radio, "compliment" );
+    AddCommandListener( Command_Radio, "thanks" );
 
     RegConsoleCmdEx("sm_hide", SM_Hide, "Toggles hide");
     RegConsoleCmdEx("sm_unhide", SM_Hide, "Toggles hide");
@@ -150,6 +151,10 @@ public OnPluginStart()
     
     // Makes FindTarget() work properly..
     LoadTranslations("common.phrases");
+    
+    AddTempEntHook("EffectDispatch", TE_OnEffectDispatch);
+	AddTempEntHook("World Decal", TE_OnWorldDecal);
+    
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -163,16 +168,6 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
     
     return APLRes_Success;
 }
-
-/*
-public OnAllPluginsLoaded()
-{
-    if(LibraryExists("gunjump"))
-    {
-        g_TimerGunJump = true;
-    }
-}
-*/
 
 public OnMapStart()
 {
@@ -194,6 +189,9 @@ public OnClientPutInServer(client)
     {
         SDKHook(client, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
     }
+    
+    SDKHook(client, SDKHook_WeaponDrop, Hook_OnWeaponDrop);
+    
 }
 
 public OnNoDamageChanged(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -286,36 +284,14 @@ public OnTimerChatChanged(MessageType, String:Message[])
     if(MessageType == 0)
     {
         Format(g_msg_start, sizeof(g_msg_start), Message);
-        ReplaceMessage(g_msg_start, sizeof(g_msg_start));
     }
     else if(MessageType == 1)
     {
         Format(g_msg_varcol, sizeof(g_msg_varcol), Message);
-        ReplaceMessage(g_msg_varcol, sizeof(g_msg_varcol));
     }
     else if(MessageType == 2)
     {
         Format(g_msg_textcol, sizeof(g_msg_textcol), Message);
-        ReplaceMessage(g_msg_textcol, sizeof(g_msg_textcol));
-    }
-}
-
-ReplaceMessage(String:message[], maxlength)
-{
-    if(g_GameType == GameType_CSS)
-    {
-        ReplaceString(message, maxlength, "^", "\x07", false);
-    }
-    else if(g_GameType == GameType_CSGO)
-    {
-        ReplaceString(message, maxlength, "^A", "\x0A");
-        ReplaceString(message, maxlength, "^1", "\x01");
-        ReplaceString(message, maxlength, "^2", "\x02");
-        ReplaceString(message, maxlength, "^3", "\x03");
-        ReplaceString(message, maxlength, "^4", "\x04");
-        ReplaceString(message, maxlength, "^5", "\x05");
-        ReplaceString(message, maxlength, "^6", "\x06");
-        ReplaceString(message, maxlength, "^7", "\x07");
     }
 }
 
@@ -326,7 +302,6 @@ public OnMessageStartChanged(Handle:convar, const String:oldValue[], const Strin
     Call_PushCell(0);
     Call_PushString(g_msg_start);
     Call_Finish();
-    ReplaceString(g_msg_start, sizeof(g_msg_start), "^", "\x07", false);
 }
 
 public OnMessageVarChanged(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -336,7 +311,6 @@ public OnMessageVarChanged(Handle:convar, const String:oldValue[], const String:
     Call_PushCell(1);
     Call_PushString(g_msg_varcol);
     Call_Finish();
-    ReplaceString(g_msg_varcol, sizeof(g_msg_varcol), "^", "\x07", false);
 }
 
 public OnMessageTextChanged(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -346,7 +320,6 @@ public OnMessageTextChanged(Handle:convar, const String:oldValue[], const String
     Call_PushCell(2);
     Call_PushString(g_msg_textcol);
     Call_Finish();
-    ReplaceString(g_msg_textcol, sizeof(g_msg_textcol), "^", "\x07", false);
 }
 
 public Action:Timer_StopMusic(Handle:timer, any:data)
@@ -477,6 +450,12 @@ public Action:NormalSHook(clients[64], &numClients, String:sample[PLATFORM_MAX_P
         return (numClients > 0) ? Plugin_Changed : Plugin_Stop;
     }
     
+    if( ( StrContains( sample, "physics/flesh/flesh_impact_bullet" ) != -1 ) || ( StrContains( sample, "player/kevlar" ) != -1 )
+        || ( StrContains( sample, "player/headshot" ) != -1 ) || ( StrContains( sample, "player/bhit_helmet" ) != -1 ) )
+    {
+        return Plugin_Stop;
+    }
+    
     return Plugin_Continue;
 }
 
@@ -574,6 +553,14 @@ public Action:DropItem(client, const String:command[], argc)
     }
     
     return Plugin_Continue;
+}
+
+public void Hook_OnWeaponDrop(int client, int entity)
+{
+    if(IsValidEntity(entity))
+    {
+        AcceptEntityInput(entity, "kill");
+    }
 }
 
 public Action Command_Jointeam(int client, const char[] command, int args)
@@ -1126,6 +1113,86 @@ public Action:Hook_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &d
     SetEntPropVector(victim, Prop_Send, "m_aimPunchAngleVel", view_as<float>({0.0, 0.0, 0.0}));
     return Plugin_Handled;
 }
+
+
+//Credits to Bara
+public Action TE_OnEffectDispatch(const char[] te_name, const Players[], int numClients, float delay)
+{
+	int iEffectIndex = TE_ReadNum("m_iEffectName");
+	int nHitBox = TE_ReadNum("m_nHitBox");
+	char sEffectName[64];
+
+	GetEffectName(iEffectIndex, sEffectName, sizeof(sEffectName));
+
+	if(StrEqual(sEffectName, "csblood"))
+	{
+		return Plugin_Handled;
+	}
+		
+	if(StrEqual(sEffectName, "ParticleEffect"))
+	{
+			
+		char sParticleEffectName[64];
+		GetParticleEffectName(nHitBox, sParticleEffectName, sizeof(sParticleEffectName));
+		
+		if(StrEqual(sParticleEffectName, "impact_helmet_headshot") || StrEqual(sParticleEffectName, "impact_physics_dust"))
+		{
+			return Plugin_Handled;
+		}
+	}
+
+
+	return Plugin_Continue;
+}
+
+public Action TE_OnWorldDecal(const char[] te_name, const Players[], int numClients, float delay)
+{
+	float vecOrigin[3];
+	int nIndex = TE_ReadNum("m_nIndex");
+	char sDecalName[64];
+
+	TE_ReadVector("m_vecOrigin", vecOrigin);
+	GetDecalName(nIndex, sDecalName, sizeof(sDecalName));
+
+	if(StrContains(sDecalName, "decals/blood") == 0 && StrContains(sDecalName, "_subrect") != -1)
+	{
+		return Plugin_Handled;
+	}
+
+	return Plugin_Continue;
+}
+
+
+stock int GetParticleEffectName(int index, char[] sEffectName, int maxlen)
+{
+	int table = INVALID_STRING_TABLE;
+	
+	if (table == INVALID_STRING_TABLE)
+		table = FindStringTable("ParticleEffectNames");
+	
+	return ReadStringTable(table, index, sEffectName, maxlen);
+}
+
+stock int GetEffectName(int index, char[] sEffectName, int maxlen)
+{
+	int table = INVALID_STRING_TABLE;
+	
+	if (table == INVALID_STRING_TABLE)
+		table = FindStringTable("EffectDispatch");
+	
+	return ReadStringTable(table, index, sEffectName, maxlen);
+}
+
+stock int GetDecalName(int index, char[] sDecalName, int maxlen)
+{
+	int table = INVALID_STRING_TABLE;
+	
+	if (table == INVALID_STRING_TABLE)
+		table = FindStringTable("decalprecache");
+	
+	return ReadStringTable(table, index, sDecalName, maxlen);
+}
+
 
 // get a player's settings
 public Native_GetClientSettings(Handle:plugin, numParams)

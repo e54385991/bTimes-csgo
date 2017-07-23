@@ -452,7 +452,6 @@ public Hook_PreThink(client)
     {
         SetConVarInt(g_ConVar_AirAccelerate, g_StyleConfig[g_Style[client][g_Type[client]]][AirAcceleration]);
         SetConVarBool(g_ConVar_EnableBunnyhopping, g_StyleConfig[g_Style[client][g_Type[client]]][EnableBunnyhopping]);
-        SetConVarBool(g_ConVar_Autobunnyhopping, g_StyleConfig[g_Style[client][g_Type[client]]][Auto]);
     }
 }
 
@@ -1146,15 +1145,15 @@ SetStyle(client, Type, Style)
     
     g_Style[client][Type] = Style;
     
-    if(GetClientTeam(client) == 1)
+    if (!IsPlayerAlive(client))
     {
-        ChangeClientTeam(client, 3);
         CS_RespawnPlayer(client);
     }
     
-    if ( !IsPlayerAlive( client ) )
+    if(GetClientTeam(client) == 1)
     {
-        CS_RespawnPlayer( client );
+        ChangeClientTeam(client, GetRandomInt(2, 3));
+        CS_RespawnPlayer(client);
     }
     
     if(Type == TIMER_MAIN)
@@ -3808,10 +3807,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
                 return;
             }
 
-            if(g_StyleConfig[Style][Auto] || (g_StyleConfig[Style][Freestyle] && g_StyleConfig[Style][Freestyle_Auto] && Timer_InsideZone(client, FREESTYLE, 1 << Style) != -1))
-            {
-                g_ConVar_Autobunnyhopping.BoolValue = true;
-            }
+            g_ConVar_Autobunnyhopping.BoolValue = (g_StyleConfig[Style][Auto] || (g_StyleConfig[Style][Freestyle] && g_StyleConfig[Style][Freestyle_Auto] && Timer_InsideZone(client, FREESTYLE, 1 << Style) != -1));
         }
         
         if(g_bJumpInStartZone == false)
@@ -3819,7 +3815,6 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
             if(Timer_InsideZone(client, MAIN_START, -1) != -1 || Timer_InsideZone(client, BONUS_START, -1) != -1)
             {
                 buttons &= ~IN_JUMP;
-                //SendConVarValue(client, g_ConVar_Autobunnyhopping, "0");
             }
         }
     }

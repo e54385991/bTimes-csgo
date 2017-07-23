@@ -388,7 +388,7 @@ InitializePlayerProperties(client)
 	g_Setup[client][CurrentZone]    = -1;
 	g_Setup[client][ViewAnticheats] = false;
 	g_Setup[client][Snapping]       = true;
-	g_Setup[client][GridSnap]       = 1;
+	g_Setup[client][GridSnap]       = 4;
 	g_Setup[client][InZonesMenu]    = false;
 	g_Setup[client][InSetFlagsMenu] = false;
 }
@@ -638,7 +638,16 @@ public Action:SM_EndB(int client, int args)
 
 public Action:SM_Zones(int client, int args)
 {
-	OpenZonesMenu(client);
+	if(IsPlayerAlive(client))
+	{
+		OpenZonesMenu(client);
+	}
+	else
+	{
+		CPrintToChat(client, "%s%sYou can't create zones when you are dead.",
+		g_msg_start,
+		g_msg_textcol);
+	}
 	
 	return Plugin_Handled;
 }
@@ -746,7 +755,7 @@ public Menu_AddZone(Handle:menu, MenuAction:action, client, param2)
 	{
 		decl String:info[32];
 		GetMenuItem(menu, param2, info, sizeof(info));
-		//Todo-List:Check if player is alive
+		
 		CreateZone(client, StringToInt(info));
 		
 		OpenAddZoneMenu(client);
