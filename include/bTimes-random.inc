@@ -3,7 +3,8 @@
 #define STOP_MUSIC   	1<<2
 #define AUTO_BHOP    	1<<3
 #define HIDE_PLAYERS 	1<<4
-#define SHOW_2DVEL   	1<<5
+#define HIDE_WEAPONS 	1<<5
+#define SHOW_2DVEL   	1<<6
 
 native GetClientSettings(client);
 native SetClientSettings(client, settings);

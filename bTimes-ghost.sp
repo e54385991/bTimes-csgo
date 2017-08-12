@@ -56,14 +56,6 @@ new	Handle:g_hGhostStartPauseTime,
 
 ConVar g_hBotQuota;
 
-// Hud colors
-int gI_StartCycle = 0;
-
-char gS_Colors[][] =
-{
-	"ff0000", "ff4000", "ff7f00", "ffbf00", "ffff00", "00ff00", "00ff80", "00ffff", "0080ff", "0000ff"
-};
-	
 public OnPluginStart()
 {	
 	/*
@@ -85,10 +77,7 @@ public OnPluginStart()
 	g_hGhostEndPauseTime   = CreateConVar("timer_ghostendpause", "5.0", "How long the ghost will pause after it finishes its run.");
 	
 	AutoExecConfig(true, "ghost", "timer");
-	
-	// Timers
-	CreateTimer(0.1, UpdateHUD_Timer, INVALID_HANDLE, TIMER_REPEAT);
-	
+
 	// Create admin command that deletes the ghost
 	RegAdminCmd("sm_deleteghost", SM_DeleteGhost, ADMFLAG_CHEATS, "Deletes the ghost.");
 	
@@ -97,19 +86,6 @@ public OnPluginStart()
 	
 	new Handle:hBotDontShoot = FindConVar("bot_dont_shoot");
 	SetConVarFlags(hBotDontShoot, GetConVarFlags(hBotDontShoot) & ~FCVAR_CHEAT);
-}
-
-// Hud colors
-public Action UpdateHUD_Timer(Handle:timer)
-{
-	gI_StartCycle++;
-
-	if(gI_StartCycle > (sizeof(gS_Colors) - 1))
-	{
-		gI_StartCycle = 0;
-	}
-
-	return Plugin_Continue;
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -584,8 +560,7 @@ public Action:GhostCheck(Handle:timer, any:data)
 											new SpecCount[MaxClients+1];
 											SpecCountToArrays(SpecCount);
 											new buttons = GetClientButtons(target);
-											PrintHintText(client, "<font size=\"16\" color=\"#%s\">\t\t   Replay</font>\n<font size='16'>Style: %s%sTime: %s\nSpecs: %d\t      %s\t\tSpeed: %.f\n%s", 
-											gS_Colors[gI_StartCycle],
+											PrintHintText(client, "<font size=\"16\" color=\"#f7b036\">\t\t   Replay</font>\n<font size='16'>Style: %s%sTime: %s\nSpecs: %d\t      %s\t\tSpeed: %.f\n%s", 
 											sStyle,
 											strlen(sStyle) <= 5 ? "\t\t\t":"\t\t",
 											sTime,
@@ -593,7 +568,6 @@ public Action:GhostCheck(Handle:timer, any:data)
 											buttons & IN_FORWARD ? "W":"_",
 											fSpeed_New,
 											keys);
-											
 										}
 									}
 								}

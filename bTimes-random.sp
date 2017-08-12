@@ -124,7 +124,7 @@ public OnPluginStart()
     AddCommandListener( Command_Radio, "thanks" );
 
     RegConsoleCmdEx("sm_hide", SM_Hide, "Toggles hide");
-    RegConsoleCmdEx("sm_unhide", SM_Hide, "Toggles hide");
+    RegConsoleCmdEx("sm_hidewep", SM_Hidewep, "Toogles hide weapon");
     RegConsoleCmdEx("sm_spec", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_spectate", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_maptime", SM_Maptime, "Shows how long the current map has been on.");
@@ -153,8 +153,8 @@ public OnPluginStart()
     LoadTranslations("common.phrases");
     
     AddTempEntHook("EffectDispatch", TE_OnEffectDispatch);
-	AddTempEntHook("World Decal", TE_OnWorldDecal);
-    
+    AddTempEntHook("World Decal", TE_OnWorldDecal);
+
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -494,6 +494,10 @@ public Action:Event_PlayerSpawn_Post(Handle:event, const String:name[], bool:don
     // no block
     SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);
     
+
+    SetEntProp(client, Prop_Data, "m_bDrawViewmodel", g_Settings[client] & HIDE_WEAPONS ? '0' : 1);
+        
+        
     return Plugin_Continue;
 }
 
@@ -752,6 +756,28 @@ public Action:SM_Hide(client, args)
     }
     
     return Plugin_Handled;
+}
+
+public Action:SM_Hidewep(client, args)
+{
+	SetClientSettings(client, GetClientSettings(client) ^ HIDE_WEAPONS);
+	
+	if(g_Settings[client] & HIDE_WEAPONS)
+	{
+		SetEntProp(client, Prop_Data, "m_bDrawViewmodel", 0);
+		CPrintToChat(client, "%s%sYour weapon is now %sinvisible",
+            g_msg_start,
+            g_msg_textcol,
+            g_msg_varcol);
+	}	
+	else
+	{
+		SetEntProp(client, Prop_Data, "m_bDrawViewmodel", 1);
+		CPrintToChat(client, "%s%sYour weapon is now %svisible",
+            g_msg_start,
+            g_msg_textcol,
+            g_msg_varcol);
+	}
 }
 
 // Spectate command
@@ -1088,18 +1114,20 @@ public Action:SM_Normalgrav(client, args)
 
 public Action:Hook_SetTransmit(entity, client)
 {
+    int target = GetEntPropEnt( client, Prop_Send, "m_hObserverTarget" );
+	
     if(client != entity && (0 < entity <= MaxClients) && IsPlayerAlive(client))
     {
         if(g_Settings[client] & HIDE_PLAYERS)
             return Plugin_Handled;
         
-        //if(GetEntityMoveType(entity) == MOVETYPE_NOCLIP && !IsFakeClient(entity))
-        //    return Plugin_Handled;
-        
         if(!IsPlayerAlive(entity))
             return Plugin_Handled;
         
         if(IsPlayerAlive(client) && IsFakeClient(entity))
+            return Plugin_Handled;
+            
+        if(entity == target)
             return Plugin_Handled;
     }
     

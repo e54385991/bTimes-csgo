@@ -56,7 +56,6 @@ public void OnPluginStart()
 	g_hFlashlightEnable		 = CreateConVar("timer_flashlight", "1", "Adds a flashlight in the game", 0, true, 0.0, true, 1.0);
 	g_hLAW 					 = CreateConVar("timer_flashlightlaw", "1", "It enables the use of flashlight through +lookatweapon", 0, true, 0.0, true, 1.0);
 	g_hReturn 				 = CreateConVar("timer_flashlightrtn", "0", "Enables weapons inspection animation when you press +lookatweapon", 0, true, 0.0, true, 1.0);
-	g_EnableAdmNoclip 		 = CreateConVar("timer_adminnoclip", "1", "Enable noclip for administrators", 0, true, 0.0, true, 1.0);
 	g_EnableTeamMsg			 = CreateConVar("timer_enableteammsg", "1", "Sets the join team message using timer_enableteammsg cvar", 0, true, 0.0, true, 1.0);
 	g_EnableAdminTeamMsg 	 = CreateConVar("timer_enableadmteammsg", "0", "It enable a message indicating an administrator joined team", 0, true, 0.0, true, 1.0);
 	g_EnableJoinMsg			 = CreateConVar("timer_enablejoinmsg", "1", "Sets the join message using timer_enablejoinmsg cvar", 0, true, 0.0, true, 1.0);
@@ -329,78 +328,6 @@ public Action:Command_LAW(client, const String:command[], argc)
 	ToggleFlashlight(client);
 
 	return (g_bRtn) ? Plugin_Continue : Plugin_Handled;
-}
-
-public Action:Command_Flashlight(client, args)
-{
-	if(!g_bEnabled)
-	{	
-		return Plugin_Handled;
-	}
-	
-	if (IsClientInGame(client) && IsPlayerAlive(client))
-	{
-		ToggleFlashlight(client);
-	}
-	
-	return Plugin_Handled;
-}
-
-void ToggleFlashlight(client) 
-{
-	SetEntProp(client, Prop_Send, "m_fEffects", GetEntProp(client, Prop_Send, "m_fEffects") ^ 4);
-}
-
-public Action:Admin_Noclip(int client,int args)
-{
-	if(GetConVarBool(g_EnableAdmNoclip))
-	{
-		if(args != 0)
-		{
-			new String:name[MAX_NAME_LENGTH];
-			GetCmdArgString(name, sizeof(name));
-			
-			new Target = FindTarget(client, name, true, false);
-			
-			if(Target != -1)
-			{
-				if(GetEntityMoveType(Target) != MOVETYPE_NOCLIP)
-				{
-					SetEntityMoveType(Target, MOVETYPE_NOCLIP);
-				}
-				else
-				{
-					SetEntityMoveType(Target, MOVETYPE_WALK);
-				}
-				
-				LogMessage("%L enable noclip for %L", client, Target);
-			}
-		}
-		else
-		{
-			if(IsPlayerAlive(client))
-			{
-				if(GetEntityMoveType(client) != MOVETYPE_NOCLIP)
-				{
-					SetEntityMoveType(client, MOVETYPE_NOCLIP);
-				}
-				else
-				{
-					SetEntityMoveType(client, MOVETYPE_WALK);
-				}
-				
-				LogMessage("%L enable noclip for yourself", client);
-			}
-			else
-			{
-				CPrintToChat(client, "%sYou need to be alive to use noclip!", g_msg_start);
-			}
-		}
-		
-		return Plugin_Handled;
-	}
-	
-	return Plugin_Handled;
 }
 
 public Action:GiveFlashbang(int client, int args)
@@ -1395,7 +1322,7 @@ public Action:Event_JoinTeam(Handle:event, const String:name[], bool:dontBroadca
 	new team = GetEventInt(event, "team");
 	new oldteam = GetEventInt(event, "oldteam");
 
-	new String:sName[MAX_NAME_LENGTH];
+	decl String:sName[MAX_NAME_LENGTH];
 	GetClientName(client, sName, sizeof(sName));
 
 	if(GetConVarBool(g_EnableTeamMsg))
@@ -1432,7 +1359,7 @@ public Action:Event_JoinTeam(Handle:event, const String:name[], bool:dontBroadca
 
 public void OnClientPostAdminCheck(int client)
 {
-	new String:sName[MAX_NAME_LENGTH];
+	decl String:sName[MAX_NAME_LENGTH];
 	GetClientName(client, sName, sizeof(sName));
 
 	if(GetConVarBool(g_EnableJoinMsg))
@@ -1455,7 +1382,7 @@ public void OnClientDisconnect(int client)
 {
 	g_bCanReceiveWeapons[client] = true;
 
-	new String:sName[MAX_NAME_LENGTH];
+	decl String:sName[MAX_NAME_LENGTH];
 	GetClientName(client, sName, sizeof(sName));
 
 	if(GetConVarBool(g_EnableDisMsg))
