@@ -119,6 +119,9 @@ new    bool:g_bIsAdmin[MAXPLAYERS + 1];
 
 bool JumpButtonsFix[65] = false;
 
+float g_flNextSpammingTime[MAXPLAYERS + 1];
+bool g_bIsSpamming[MAXPLAYERS + 1];
+
 public OnPluginStart()
 {
     // Connect to the database
@@ -171,6 +174,7 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_pause", SM_Pause, "Pauses your timer and freezes you.");
     RegConsoleCmdEx("sm_auto", SM_Auto, "Toggles auto bunnyhop.");
     RegConsoleCmdEx("sm_bhop", SM_Auto, "Toggles auto bunnyhop.");
+    RegConsoleCmdEx("sm_move", SM_Move, "For getting players out of places they are stuck in");
     RegAdminCmd("sm_reloadstyle", SM_ReloadStyle, ADMFLAG_ROOT, "Reload Style Config.");
     
     // Makes FindTarget() work properly
@@ -280,7 +284,7 @@ public OnMapStart()
         {
             GetStyleAbbr(Style, sStyleAbbr, sizeof(sStyleAbbr), true);
             
-            FormatEx(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sW%s: No Record", sTypeAbbr, sStyleAbbr);
+            FormatEx(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "%sSR%s: No Record", sTypeAbbr, sStyleAbbr);
         }
     }
     
@@ -397,6 +401,10 @@ public bool:OnClientConnect(client)
     g_bIsAdmin[client] = false;
     
     g_fNoClipSpeed[client] = 1.0;
+    
+    g_flNextSpammingTime[client] = 0.0;
+    
+    g_bIsSpamming[client] = false;
     
     return true;
 }
@@ -588,6 +596,8 @@ public Action:Timer_CheckVel(Handle:timer, any:client)
 // Auto bhop
 public Action:SM_Auto(client, args)
 {
+    if(!client) return Plugin_Handled;
+
     if(g_bAllowAuto == true)
     {
         if (args < 1)
@@ -652,7 +662,9 @@ public Action:SM_Auto(client, args)
 
 // Toggles between 2d vector and 3d vector velocity
 public Action:SM_TrueVelocity(client, args)
-{    
+{
+    if(!client) return Plugin_Handled;
+	
     SetClientSettings(client, GetClientSettings(client) ^ SHOW_2DVEL);
     
     if(GetClientSettings(client) & SHOW_2DVEL)
@@ -898,6 +910,8 @@ public Action:SM_ServerRecord(client, args)
 
 public Action:SM_Time(client, args)
 {
+    if(!client) return Plugin_Handled;
+	
     new Type, Style;
     if(GetTypeStyleFromCommand("time", Type, Style))
     {
@@ -948,6 +962,8 @@ public Action:SM_Time(client, args)
 
 public Action:SM_Style(client, args)
 {
+    if(!client) return Plugin_Handled;
+	
     new Handle:menu = CreateMenu(Menu_Style);
     
     SetMenuTitle(menu, "Change Style");
@@ -973,6 +989,8 @@ public Action:SM_Style(client, args)
 
 public Action:SM_BStyle(client, args)
 {
+    if(!client) return Plugin_Handled;
+	
     new Handle:menu = CreateMenu(Menu_Style);
     
     SetMenuTitle(menu, "Change Bonus Style");
@@ -1158,6 +1176,8 @@ public Action:SM_Practice(client, args)
 
 public Action:SM_Pause(client, args)
 {
+    if(!client) return Plugin_Handled;
+	
     if(GetConVarBool(g_hAllowPause))
     {
         if(Timer_InsideZone(client, MAIN_START, -1) == -1 && Timer_InsideZone(client, BONUS_START, -1) == -1)
@@ -1273,6 +1293,41 @@ public Action SM_ReloadStyle(int client, int args)
 {
 	ReadStyleConfig();
 		
+	return Plugin_Handled;
+}
+
+public Action:SM_Move(client, args)
+{
+	if(!client)	return Plugin_Handled;
+	
+	if(Timer_InsideZone(client, MAIN_START) != -1 || Timer_InsideZone(client, BONUS_START) != -1)
+	{
+        CPrintToChat(client, "%s%sYou cant use this command when you're in start zone.",
+		            g_msg_start,
+                    g_msg_textcol);
+
+        return Plugin_Handled;
+    }
+    
+	if(IsSpammingCommand(client, GetRandomFloat(1.0, 4.0)))
+	{
+		CPrintToChat(client, "%s%sStop Spamming.", g_msg_start,
+					g_msg_textcol);
+		return Plugin_Handled;
+	}
+    
+	new Float:angles[3], Float:pos[3];
+	GetClientEyeAngles(client, angles);
+	GetAngleVectors(angles, angles, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
+
+	for(new i=0; i<3; i++)
+		pos[i] += (angles[i] * 50);
+
+	TeleportEntity(client, pos, NULL_VECTOR, Float:{0.0, 0.0, 0.0});
+
+	g_fCurrentTime[client] += GetRandomFloat(30.1337, 60.1337);
+
 	return Plugin_Handled;
 }
 
@@ -1536,7 +1591,7 @@ GetTimerAdvancedString(client, String:sResult[], maxlength, ward, SpecCount[], A
 	}
 
 	new Float:fTime = GetClientTimer(client);
-	new String:sTime[32], String:sColor[7];
+	decl String:sTime[32], String:sColor[7];
 	FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 0);
 	GetTimeColor(fTime, g_ServerRecord[g_Type[client]][Style], sColor, sizeof(sColor));
 	Format(sResult, maxlength, "%sTime: <font color='#%s'>%s</font> #%d\n", sResult, sColor, sTime, GetPlayerPosition(fTime, g_Type[client], Style));
@@ -1995,7 +2050,7 @@ public Native_FinishTimer(Handle:plugin, numParams)
             {
                 g_ServerRecord[Type][Style] = fTime;
                 
-                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "WR: %s", sTime); 
+                Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "SR: %s", sTime); 
                 for (int i = 0; i < 3; i++)
                 {
                     CPrintToChatAll("%s%sNew %s%s %sRecord by %s%N %son %s%s %sin %s%s%s.",
@@ -3455,6 +3510,7 @@ CheckSync(client, buttons, Float:vel[3], Float:angles[3])
 				fAngleDiff += 360;
 			
 			// Add to good sync if client buttons match up
+			//Too Hardcode
 			if(Direction == 1)
 			{
 				if(fAngleDiff > 0)
@@ -3477,6 +3533,33 @@ CheckSync(client, buttons, Float:vel[3], Float:angles[3])
 						g_goodSync[client]++;
 					}
 					if(vel[1] > 0)
+					{
+						g_goodSyncVel[client]++;
+					}
+				}
+			}
+			else if(Direction == 2)
+			{
+				if(fAngleDiff > 0)
+				{
+					g_totalSync[client]++;
+					if((buttons & IN_FORWARD) && (buttons & IN_MOVELEFT)&& !(buttons & IN_MOVERIGHT))
+					{
+						g_goodSync[client]++;
+					}
+					if(vel[0] < 0 && vel[1] < 0)
+					{
+						g_goodSyncVel[client]++;
+					}
+				}
+				else if(fAngleDiff < 0)
+				{
+					g_totalSync[client]++;
+					if((buttons & IN_FORWARD) && (buttons & IN_MOVERIGHT)&& !(buttons & IN_MOVELEFT))
+					{
+						g_goodSync[client]++;
+					}
+					if(vel[0] > 0 && vel[1] > 0)
 					{
 						g_goodSyncVel[client]++;
 					}
@@ -3514,7 +3597,7 @@ CheckSync(client, buttons, Float:vel[3], Float:angles[3])
 				if(fAngleDiff > 0)
 				{
 					g_totalSync[client]++;
-					if((buttons & IN_MOVELEFT) && !(buttons & IN_MOVERIGHT))
+					if((buttons & IN_MOVERIGHT) && !(buttons & IN_MOVELEFT))
 					{
 						g_goodSync[client]++;
 					}
@@ -3526,7 +3609,7 @@ CheckSync(client, buttons, Float:vel[3], Float:angles[3])
 				else if(fAngleDiff < 0)
 				{
 					g_totalSync[client]++;
-					if((buttons & IN_MOVERIGHT) && !(buttons & IN_MOVELEFT))
+					if((buttons & IN_MOVELEFT) && !(buttons & IN_MOVERIGHT))
 					{
 						g_goodSync[client]++;
 					}
@@ -3609,9 +3692,9 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
                     bRestrict = true;
                 }
             }
-            else if (StrEqual(g_StyleConfig[Style][Special_Key], "backward", true))
+            else if (StrEqual(g_StyleConfig[Style][Special_Key], "backward", true)) //Credit to Mehis
             {
-            	if(GetEntityFlags(client) & FL_ONGROUND)
+            	if(!(GetEntityFlags(client) & FL_ONGROUND))
             	{
                     decl Float:eyeangle[3];
                     decl Float:velocity[3];
@@ -3754,4 +3837,16 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
     }
     
     g_Buttons[client] = buttons;
+}
+
+stock bool IsSpammingCommand( int client , float warningtime)
+{
+	if (g_flNextSpammingTime[client] > GetEngineTime())
+	{
+		return g_bIsSpamming[client] = true;
+	}
+	
+	g_flNextSpammingTime[client] = GetEngineTime() + warningtime;
+	
+	return g_bIsSpamming[client] = false;
 }

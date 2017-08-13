@@ -65,7 +65,7 @@ public void OnPluginStart()
 
 	// ConVars
 	SetConVar("sv_enablebunnyhopping", "1");
-	/*	SetConVar("sv_maxvelocity", "911420");*/
+	SetConVar("sv_maxvelocity", "2147483600");
 	SetConVar("sv_friction", "4");
 	SetConVar("sv_accelerate", "5");
 	SetConVar("bot_dont_shoot", "1");
@@ -1290,8 +1290,8 @@ public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast
 	
 	if(StrEqual(cvar_string, "sv_enablebunnyhopping"))
 		SetConVar("sv_enablebunnyhopping", "1");
-/*	else if(StrEqual(cvar_string, "sv_maxvelocity"))
-		SetConVar("sv_maxvelocity", "911420");*/
+    else if(StrEqual(cvar_string, "sv_maxvelocity"))
+		SetConVar("sv_maxvelocity", "2147483600");
 	else if(StrEqual(cvar_string, "sv_friction"))
 		SetConVar("sv_friction", "4");
 	else if(StrEqual(cvar_string, "sv_accelerate"))

@@ -143,7 +143,6 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_normalgrav", SM_Normalgrav, "Sets your gravity to normal.");
     
     // Admin commands
-    RegAdminCmd("sm_move", SM_Move, ADMFLAG_GENERIC, "For getting players out of places they are stuck in");
     RegAdminCmd("sm_hudfuck", SM_Hudfuck, ADMFLAG_GENERIC, "Removes a player's hud so they can only leave the server/game through task manager (Use only on players who deserve it)");
     
     // Client settings
@@ -818,39 +817,6 @@ public Action:SM_Spec(client, args)
             }
         }
     }
-    return Plugin_Handled;
-}
-
-// Move stuck players
-public Action:SM_Move(client, args)
-{
-    if(args != 0)
-    {
-        decl String:name[MAX_NAME_LENGTH];
-        GetCmdArgString(name, sizeof(name));
-        
-        new Target = FindTarget(client, name, true, false);
-        
-        if(Target != -1)
-        {
-            new Float:angles[3], Float:pos[3];
-            GetClientEyeAngles(Target, angles);
-            GetAngleVectors(angles, angles, NULL_VECTOR, NULL_VECTOR);
-            GetEntPropVector(Target, Prop_Send, "m_vecOrigin", pos);
-            
-            for(new i=0; i<3; i++)
-                pos[i] += (angles[i] * 50);
-            
-            TeleportEntity(Target, pos, NULL_VECTOR, NULL_VECTOR);
-            
-            LogMessage("%L moved %L", client, Target);
-        }
-    }
-    else
-    {
-        PrintToChat(client, "[SM] Usage: sm_move <target>");
-    }
-    
     return Plugin_Handled;
 }
 

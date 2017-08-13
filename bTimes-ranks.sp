@@ -211,7 +211,7 @@ public OnStylesLoaded()
 	RegConsoleCmdPerStyle("mapsleft", SM_Mapsleft, "Show maps left for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("mapsdone", SM_Mapsdone, "Show maps done for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("top", SM_Top, "Show list of top players for {Type} timer on {Style} style.");
-	RegConsoleCmdPerStyle("topwr", SM_TopWorldRecord, "Show who has the most records for {Type} timer on {Style} style.");
+	RegConsoleCmdPerStyle("topsr", SM_TopServerRecord, "Show who has the most records for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("stats", SM_Stats, "Shows a player's stats for {Type} timer on {Style} style.");
 	
 	for(new Type; Type < MAX_TYPES; Type++)
@@ -708,7 +708,7 @@ OpenStatsMenu(client, PlayerID, Type, Style)
 		new Float:fPoints = GetArrayCell(g_hRanksPoints[Type][Style], Rank - 1);
 		
 		decl String:sDisplay[256];
-		FormatEx(sDisplay, sizeof(sDisplay), "%s [%s]\nWorld Records: %d\n \nMaps done: %d / %d (%.1f%%)\n \nRank: %d / %d (%d Pts.)\n--------------------------------",
+		FormatEx(sDisplay, sizeof(sDisplay), "%s [%s]\nServer Records: %d\n \nMaps done: %d / %d (%.1f%%)\n \nRank: %d / %d (%d Pts.)\n--------------------------------",
 			sType,
 			sStyle,
 			RecordCount,
@@ -823,11 +823,11 @@ public Native_OpenStatsMenu(Handle:plugin, numParams)
 	OpenStatsMenu(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4));
 }
 
-public Action:SM_TopWorldRecord(client, args)
+public Action:SM_TopServerRecord(client, args)
 {
 	new Type, Style;
 	
-	if(GetTypeStyleFromCommand("topwr", Type, Style))
+	if(GetTypeStyleFromCommand("topsr", Type, Style))
 	{
 		decl String:sType[32];
 		GetTypeName(Type, sType, sizeof(sType));
@@ -839,7 +839,7 @@ public Action:SM_TopWorldRecord(client, args)
 		if(iSize > 0)
 		{
 			new Handle:menu = CreateMenu(Menu_RecordCount);
-			SetMenuTitle(menu, "World Record Count [%s] - [%s]", sType, sStyle);
+			SetMenuTitle(menu, "Server Record Count [%s] - [%s]", sType, sStyle);
 			
 			new PlayerID, RecordCount, String:sInfo[32], String:sDisplay[64], String:sName[MAX_NAME_LENGTH];
 			for(new idx; idx < iSize; idx++)
@@ -855,11 +855,16 @@ public Action:SM_TopWorldRecord(client, args)
 				AddMenuItem(menu, sInfo, sDisplay);
 			}
 			
+			if(GetMenuItemCount(menu) <= 7)
+			{
+				SetMenuPagination(menu, MENU_NO_PAGINATION);
+			}
+			
 			DisplayMenu(menu, client, MENU_TIME_FOREVER);
 		}
 		else
 		{
-			CPrintToChat(client, "%s%s[%s%s%s] - [%s%s%s] There are no world records on any map.",
+			CPrintToChat(client, "%s%s[%s%s%s] - [%s%s%s] There are no server records on any map.",
 				g_msg_start,
 				g_msg_textcol,
 				g_msg_varcol,
@@ -1523,7 +1528,7 @@ LoadChatRanks()
 	ClearArray(g_hChatRanksNames);
 	
 	// Read file lines and get chat ranks and ranges out of them
-	new String:line[PLATFORM_MAX_PATH], String:oldLine[PLATFORM_MAX_PATH], String:sRange[PLATFORM_MAX_PATH], String:sName[PLATFORM_MAX_PATH], String:expRange[2][128];
+	decl String:line[PLATFORM_MAX_PATH], String:oldLine[PLATFORM_MAX_PATH], String:sRange[PLATFORM_MAX_PATH], String:sName[PLATFORM_MAX_PATH], String:expRange[2][128];
 	new idx, Range[2];
 	
 	new Handle:hFile = OpenFile(sPath, "r");
@@ -1888,10 +1893,10 @@ public DB_ShowMapsLeft_Callback(Handle:owner, Handle:hndl, String:error[], any:d
 		if(client != 0)
 		{
 			new rows = SQL_GetRowCount(hndl), count;
-			new String:mapname[128];
+			decl String:mapname[128];
 			new Handle:menu = CreateMenu(Menu_ShowMapsleft);
 			
-			new String:sType[32];
+			decl String:sType[32];
 			if(Type != ALL)
 			{
 				GetTypeName(Type, sType, sizeof(sType));
@@ -1900,7 +1905,7 @@ public DB_ShowMapsLeft_Callback(Handle:owner, Handle:hndl, String:error[], any:d
 				AddSpaceToEnd(sType, sizeof(sType));
 			}
 			
-			new String:sStyle[32];
+			decl String:sStyle[32];
 			if(Style != ALL)
 			{
 				GetStyleName(Style, sStyle, sizeof(sStyle));
@@ -2048,7 +2053,7 @@ public Menu_ShowMapsdone_Callback(Handle:owner, Handle:hndl, String:error[], any
 	   
 		new rows = SQL_GetRowCount(hndl);
 		
-		new String:sType[32];
+		decl String:sType[32];
 		if(Type != ALL)
 		{
 			GetTypeName(Type, sType, sizeof(sType));
@@ -2057,7 +2062,7 @@ public Menu_ShowMapsdone_Callback(Handle:owner, Handle:hndl, String:error[], any
 			AddSpaceToEnd(sType, sizeof(sType));
 		}
 		
-		new String:sStyle[32];
+		decl String:sStyle[32];
 		if(Style != ALL)
 		{
 			GetStyleName(Style, sStyle, sizeof(sStyle));
@@ -2557,7 +2562,7 @@ public LoadRankList_Callback(Handle:owner, Handle:hndl, const String:error[], an
 			}
 		}
 		
-		new String:sName[MAX_NAME_LENGTH], PlayerID, Float:Points, Type, Style, iSize;
+		decl String:sName[MAX_NAME_LENGTH], PlayerID, Float:Points, Type, Style, iSize;
 		
 		while(SQL_FetchRow(hndl))
 		{

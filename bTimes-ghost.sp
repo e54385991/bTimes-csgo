@@ -694,7 +694,7 @@ LoadGhost()
 					new Handle:hFile = OpenFile(sPath, "r");
 					
 					// Load all data into the ghost handle
-					new String:line[512], String:expLine[6][64], String:expLine2[2][10];
+					decl String:line[512], String:expLine[6][64], String:expLine2[2][10];
 					new iSize = 0;
 					
 					ReadFileLine(hFile, line, sizeof(line));
