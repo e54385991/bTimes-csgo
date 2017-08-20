@@ -82,6 +82,7 @@ public OnPluginStart()
     AutoExecConfig(true, "random", "timer");
     
     // Event hooks
+    //HookEvent("player_spawn", Event_PlayerSpawn);
     HookEvent("player_spawn", Event_PlayerSpawn_Post, EventHookMode_Post);
     HookEvent("player_death", Event_PlayerDeath);
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
