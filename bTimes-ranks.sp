@@ -211,7 +211,7 @@ public OnStylesLoaded()
 	RegConsoleCmdPerStyle("mapsleft", SM_Mapsleft, "Show maps left for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("mapsdone", SM_Mapsdone, "Show maps done for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("top", SM_Top, "Show list of top players for {Type} timer on {Style} style.");
-	RegConsoleCmdPerStyle("topsr", SM_TopServerRecord, "Show who has the most records for {Type} timer on {Style} style.");
+	RegConsoleCmdPerStyle("topwr", SM_TopServerRecord, "Show who has the most records for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("stats", SM_Stats, "Shows a player's stats for {Type} timer on {Style} style.");
 	
 	for(new Type; Type < MAX_TYPES; Type++)
@@ -827,7 +827,7 @@ public Action:SM_TopServerRecord(client, args)
 {
 	new Type, Style;
 	
-	if(GetTypeStyleFromCommand("topsr", Type, Style))
+	if(GetTypeStyleFromCommand("topwr", Type, Style))
 	{
 		decl String:sType[32];
 		GetTypeName(Type, sType, sizeof(sType));

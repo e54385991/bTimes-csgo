@@ -23,8 +23,6 @@ new String:g_msg_textcol[128];
 new bool:g_bCanReceiveWeapons[MAXPLAYERS] = {true, ...};
 
 new g_HPOffset, g_APOffset;
-
-new Handle:g_EnableAdmNoclip;
 	
 new Handle:mp_playercashawards = INVALID_HANDLE;
 new Handle:mp_teamcashawards = INVALID_HANDLE;
@@ -38,24 +36,12 @@ new     Handle:g_EnableJoinMsg,
 new 	Handle:g_EnableDisMsg,
 	Handle:g_EnableAdminDisMsg;
 
-// flashlight variables
-new Handle:g_hFlashlightEnable = INVALID_HANDLE;
-new Handle:g_hLAW = INVALID_HANDLE;
-new Handle:g_hReturn = INVALID_HANDLE;
-
-new bool:g_bEnabled = true;
-new bool:g_bLAW = true;
-new bool:g_bRtn = false;
-
 new Handle:mp_timelimit = INVALID_HANDLE;
 new timelimit;
 
 public void OnPluginStart()
 {
 	// ConVars
-	g_hFlashlightEnable		 = CreateConVar("timer_flashlight", "1", "Adds a flashlight in the game", 0, true, 0.0, true, 1.0);
-	g_hLAW 					 = CreateConVar("timer_flashlightlaw", "1", "It enables the use of flashlight through +lookatweapon", 0, true, 0.0, true, 1.0);
-	g_hReturn 				 = CreateConVar("timer_flashlightrtn", "0", "Enables weapons inspection animation when you press +lookatweapon", 0, true, 0.0, true, 1.0);
 	g_EnableTeamMsg			 = CreateConVar("timer_enableteammsg", "1", "Sets the join team message using timer_enableteammsg cvar", 0, true, 0.0, true, 1.0);
 	g_EnableAdminTeamMsg 	 = CreateConVar("timer_enableadmteammsg", "0", "It enable a message indicating an administrator joined team", 0, true, 0.0, true, 1.0);
 	g_EnableJoinMsg			 = CreateConVar("timer_enablejoinmsg", "1", "Sets the join message using timer_enablejoinmsg cvar", 0, true, 0.0, true, 1.0);
@@ -86,9 +72,6 @@ public void OnPluginStart()
 	HookEvent("player_team", Event_JoinTeam);
 	HookEvent("player_team", Event_JoinTeam2, EventHookMode_Pre);
 	HookEvent("player_disconnect", Event_PlayerDisconnect, EventHookMode_Pre);
-	HookConVarChange(g_hFlashlightEnable, ConVarChanged);
-	HookConVarChange(g_hLAW, ConVarChanged);
-	HookConVarChange(g_hReturn, ConVarChanged);
 	mp_timelimit = FindConVar("mp_timelimit");
 	timelimit = GetConVarInt(mp_timelimit);
 	HookConVarChange(mp_timelimit, ConVarChanged);
@@ -99,8 +82,6 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_usp", GiveUsp, "Gives player usp");
 	RegConsoleCmd("sm_knife", GiveKnife, "Gives player knife");
 	RegConsoleCmd("sm_weaponlist", WeaponList, "Show weapon list");
-	AddCommandListener(Command_LAW, "+lookatweapon");
-	RegConsoleCmd("sm_flashlight", Command_Flashlight);
 
 	// Admin commands
 	RegAdminCmd("sm_extend", admcmd_extend, ADMFLAG_CHANGEMAP, "sm_extend <minutes> - Extend map time or -short");
@@ -137,8 +118,6 @@ public void OnPluginStart()
 	RegAdminCmd("sm_xm", GiveXM1014, ADMFLAG_CHEATS, "Gives player xm1014");
 	RegAdminCmd("sm_revolver", GiveRevolver, ADMFLAG_CHEATS, "Gives player revolver");
 	RegAdminCmd("sm_flash", GiveFlashbang, ADMFLAG_CHEATS, "Gives player flashbang");
-	RegAdminCmd("sm_admnc", Admin_Noclip, ADMFLAG_ROOT, "Enable noclip for administrators");
-	RegAdminCmd("sm_ap", Admin_Noclip, ADMFLAG_ROOT, "Enable noclip for administrators");
 
 	// Change HP ana ARMOR
 	g_HPOffset = FindSendPropInfo("CCSPlayer", "m_iHealth");
@@ -149,21 +128,6 @@ public void OnPluginStart()
 
 public ConVarChanged(Handle:cvar, const String:oldVal[], const String:newVal[])
 {
-	if(cvar == g_hFlashlightEnable)
-	{
-		g_bEnabled = bool:StringToInt(newVal);
-	}
-
-	if(cvar == g_hLAW)
-	{
-		g_bLAW = bool:StringToInt(newVal);
-	}
-
-	if(cvar == g_hReturn)
-	{
-		g_bRtn = bool:StringToInt(newVal);
-	}
-	
 	timelimit = GetConVarInt(mp_timelimit);
 }
 
@@ -182,38 +146,15 @@ public OnTimerChatChanged(MessageType, String:Message[])
 	if(MessageType == 0)
 	{
 		Format(g_msg_start, sizeof(g_msg_start), Message);
-		ReplaceMessage(g_msg_start, sizeof(g_msg_start));
 	}
 	else if(MessageType == 1)
 	{
 		Format(g_msg_varcol, sizeof(g_msg_varcol), Message);
-		ReplaceMessage(g_msg_varcol, sizeof(g_msg_varcol));
 	}
 	else if(MessageType == 2)
 	{
 		Format(g_msg_textcol, sizeof(g_msg_textcol), Message);
-		ReplaceMessage(g_msg_textcol, sizeof(g_msg_textcol));
 	}
-}
-
-ReplaceMessage(String:message[], maxlength)
-{
-	ReplaceString(message, maxlength, "^A", "\x0A");
-	ReplaceString(message, maxlength, "^B", "\x0B");
-	ReplaceString(message, maxlength, "^C", "\x0C");
-	ReplaceString(message, maxlength, "^D", "\x0D");
-	ReplaceString(message, maxlength, "^E", "\x0E");
-	ReplaceString(message, maxlength, "^F", "\x0F");
-	ReplaceString(message, maxlength, "^1", "\x01");
-	ReplaceString(message, maxlength, "^2", "\x02");
-	ReplaceString(message, maxlength, "^3", "\x03");
-	ReplaceString(message, maxlength, "^4", "\x04");
-	ReplaceString(message, maxlength, "^5", "\x05");
-	ReplaceString(message, maxlength, "^6", "\x06");
-	ReplaceString(message, maxlength, "^7", "\x07");
-	ReplaceString(message, maxlength, "^8", "\x08");
-	ReplaceString(message, maxlength, "^9", "\x09");
-	ReplaceString(message, maxlength, "^0", "\x10");
 }
 
 void SetConVar(String:cvar1[], String:n_val[])
@@ -306,28 +247,6 @@ public Event_PlayerActive(Handle:event, const String:name[], bool:dontBroadcast)
 		SendConVarValue(client, mp_playercashawards, "0");
 		SendConVarValue(client, mp_teamcashawards, "0");
 	}
-}
-
-public Action:Command_LAW(client, const String:command[], argc)
-{
-	if(!g_bLAW || !g_bEnabled)
-	{	
-		return Plugin_Continue;
-	}
-
-	if(!IsClientInGame(client))
-	{
-		return Plugin_Continue;
-	}
-
-	if(!IsPlayerAlive(client))
-	{
-		return Plugin_Continue;
-	}
-
-	ToggleFlashlight(client);
-
-	return (g_bRtn) ? Plugin_Continue : Plugin_Handled;
 }
 
 public Action:GiveFlashbang(int client, int args)
@@ -1290,7 +1209,7 @@ public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast
 	
 	if(StrEqual(cvar_string, "sv_enablebunnyhopping"))
 		SetConVar("sv_enablebunnyhopping", "1");
-    else if(StrEqual(cvar_string, "sv_maxvelocity"))
+	else if(StrEqual(cvar_string, "sv_maxvelocity"))
 		SetConVar("sv_maxvelocity", "2147483600");
 	else if(StrEqual(cvar_string, "sv_friction"))
 		SetConVar("sv_friction", "4");

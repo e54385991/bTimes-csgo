@@ -485,7 +485,7 @@ public Action:KillEntity(Handle:timer, any:ref)
         }
     }
 }
- 
+
 public Action:Event_PlayerSpawn_Post(Handle:event, const String:name[], bool:dontBroadcast)
 {
     new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -1080,23 +1080,16 @@ public Action:SM_Normalgrav(client, args)
 
 public Action:Hook_SetTransmit(entity, client)
 {
-    int target = GetEntPropEnt( client, Prop_Send, "m_hObserverTarget" );
 	
-    if(client != entity && (0 < entity <= MaxClients) && IsPlayerAlive(client))
-    {
-        if(g_Settings[client] & HIDE_PLAYERS)
-            return Plugin_Handled;
+    if(entity > 0 && entity <= MaxClients || client == entity)
+        return Plugin_Handled;
+
+    if(g_Settings[client] & HIDE_PLAYERS)
+        return Plugin_Handled;
         
-        if(!IsPlayerAlive(entity))
-            return Plugin_Handled;
-        
-        if(IsPlayerAlive(client) && IsFakeClient(entity))
-            return Plugin_Handled;
-            
-        if(entity == target)
-            return Plugin_Handled;
-    }
-    
+    if(!IsPlayerAlive(client) && GetClientObserverTarget(client) == entity)
+        return Plugin_Handled;
+
     return Plugin_Continue;
 }
 
@@ -1107,7 +1100,6 @@ public Action:Hook_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &d
     SetEntPropVector(victim, Prop_Send, "m_aimPunchAngleVel", view_as<float>({0.0, 0.0, 0.0}));
     return Plugin_Handled;
 }
-
 
 //Credits to Bara
 public Action TE_OnEffectDispatch(const char[] te_name, const Players[], int numClients, float delay)
@@ -1206,4 +1198,9 @@ public Native_SetClientSettings(Handle:plugin, numParams)
         IntToString(g_Settings[client], sSettings, sizeof(sSettings));
         SetClientCookie(client, g_hSettingsCookie, sSettings);
     }
+}
+
+stock int GetClientObserverTarget(int client)
+{
+    return GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 }

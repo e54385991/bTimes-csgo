@@ -372,7 +372,7 @@ public bool:OnClientConnect(client)
         for(new Style; Style < MAX_STYLES; Style++)
         {
             g_fTime[client][Type][Style] = 0.0;
-            FormatEx(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: Loading..");
+            FormatEx(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: N/A");
         }
     }
     
@@ -2018,7 +2018,7 @@ public Native_FinishTimer(Handle:plugin, numParams)
         
         new Float:fTime = GetClientTimer(client);
         decl String:sTime[32];
-        FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 1);
+        FormatPlayerTime(fTime, sTime, sizeof(sTime), false, 1); 
         
         decl String:sType[32];
 
@@ -2294,7 +2294,7 @@ DB_LoadPlayerInfo(client)
                 {
                     if(g_StyleConfig[Style][AllowType][Type])
                     {
-                        FormatEx(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: No time");
+                        FormatEx(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: N/A");
                         
                         iSize = GetArraySize(g_hTimes[Type][Style]);
                         
@@ -3282,7 +3282,7 @@ public DB_DeleteRecord_Callback2(Handle:owner, Handle:hndl, String:error[], any:
                     if(GetArrayCell(g_hTimes[Type][Style], idx, 0) == PlayerID)
                     {
                         g_fTime[client][Type][Style] = 0.0;
-                        Format(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: No time");
+                        Format(g_sTime[client][Type][Style], sizeof(g_sTime[][][]), "Best: N/A");
                     }
                 }
             }

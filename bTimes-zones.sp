@@ -55,7 +55,8 @@ enum Setup
 	Handle:SetupTimer,
 	bool:Snapping,
 	GridSnap,
-	bool:ViewAnticheats
+	bool:ViewAnticheats,
+	bool:Show2DBox
 };
 
 new    g_Setup[MAXPLAYERS + 1][Setup];
@@ -73,6 +74,8 @@ new    g_SnapModelIndex,
 // Zone drawing
 new    g_Drawing_Zone,
 	g_Drawing_ZoneNumber;
+bool g_bIsCreatingZone;
+bool g_bIsAdmin[MAXPLAYERS + 1];
 
 // Cvars
 new    Handle:g_hZoneColor[ZONE_COUNT],
@@ -152,7 +155,7 @@ public OnPluginStart()
 	RegConsoleCmdEx("sm_endb", SM_EndB, "Teleports you to the bonus end zone");
 	RegConsoleCmdEx("sm_showac", SM_ShowAC, "Toggles anticheats being visible");
 	RegConsoleCmdEx("sm_showacs", SM_ShowAC, "Toggles anticheats being visible");
-
+	RegConsoleCmdEx("sm_show2d", SM_Show2D, "Toogles zone box to 2d");
 	// Events
 	HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
 }
@@ -249,7 +252,14 @@ public bool:OnClientConnect(client, String:rejectmsg[], maxlen)
 {
 	InitializePlayerProperties(client);
 	
+	g_bIsAdmin[client] = false;
+	
 	return true;
+}
+
+public OnClientPostAdminCheck(client)
+{
+    g_bIsAdmin[client] = GetAdminFlag(GetUserAdmin(client), Admin_Generic, Access_Effective);
 }
 
 public OnConfigsExecuted()
@@ -387,6 +397,7 @@ InitializePlayerProperties(client)
 {
 	g_Setup[client][CurrentZone]    = -1;
 	g_Setup[client][ViewAnticheats] = false;
+	g_Setup[client][Show2DBox]     = false;
 	g_Setup[client][Snapping]       = true;
 	g_Setup[client][GridSnap]       = 4;
 	g_Setup[client][InZonesMenu]    = false;
@@ -489,6 +500,12 @@ public Action:Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroa
 public Action:SM_ShowAC(int client, int args)
 {
 	g_Setup[client][ViewAnticheats] = !g_Setup[client][ViewAnticheats];
+	return Plugin_Handled;
+}
+
+public Action:SM_Show2D(int client, int args)
+{
+	g_Setup[client][Show2DBox] = !g_Setup[client][Show2DBox];
 	return Plugin_Handled;
 }
 
@@ -785,7 +802,10 @@ CreateZone(client, Zone)
 	{
 		if((g_Properties[Zone][Count] < g_Properties[Zone][Max]) || g_Properties[Zone][Replaceable] == true)
 		{
+						
 			new ZoneNumber;
+			
+			g_bIsCreatingZone = true;
 			
 			if(g_Properties[Zone][Count] >= g_Properties[Zone][Max])
 				ZoneNumber = 0;
@@ -830,6 +850,8 @@ CreateZone(client, Zone)
 				
 				if(g_Properties[Zone][TriggerBased] == true)
 					CreateZoneTrigger(Zone, ZoneNumber);
+					
+				g_bIsCreatingZone = false;
 			}
 			else
 			{
@@ -914,36 +936,78 @@ DrawZone(Zone, ZoneNumber, Float:life)
 {
 	new color[4];
 	
+	static int pairs[][] =
+	{
+		{ 0, 2 },
+		{ 2, 6 },
+		{ 6, 4 },
+		{ 4, 0 },
+		{ 0, 1 },
+		{ 3, 1 },
+		{ 3, 2 },
+		{ 3, 7 },
+		{ 5, 1 },
+		{ 5, 4 },
+		{ 6, 7 },
+		{ 7, 5 }
+	};
+	
 	for(new i = 0; i < 4; i++)
 		color[i] = g_Properties[Zone][Color][i];
-	
-	for(new i=0, i2=3; i2>=0; i+=i2--)
+
+	new clients[MaxClients], numClients;
+
+	bool ShouldShow2dBox;
+	bool ShouldShowAc;
+
+	if(!g_bIsCreatingZone)
 	{
-		for(new j=1; j<=7; j+=(j/2)+1)
+		for(new client = 1; client <= MaxClients; client++)
 		{
-			if(j != 7-i)
+			if(IsClientInGame(client))
 			{
-				TE_SetupBeamPoints(g_Zones[Zone][ZoneNumber][i], g_Zones[Zone][ZoneNumber][j], g_Properties[Zone][ModelIndex], g_Properties[Zone][HaloIndex], 0, 0, (life < 0.1)?0.1:life, GetConVarFloat(g_hZoneWidth), GetConVarFloat(g_hZoneWidth), 10, 0.0, color, 0);
-				
-				new clients[MaxClients], numClients;
-				
-				switch(Zone)
+				clients[numClients++] = client;
+				if(g_Setup[client][Show2DBox] == true)
 				{
-					case MAIN_START, MAIN_END, BONUS_START, BONUS_END, FREESTYLE:
-					{
-						TE_SendToAll();
-					}
-					case ANTICHEAT:
-					{
-						for(new client = 1; client <= MaxClients; client++)
-							if(IsClientInGame(client) && g_Setup[client][ViewAnticheats] == true)
-								clients[numClients++] = client;
-						
-						if(numClients > 0)
-							TE_Send(clients, numClients);
-					}
+					ShouldShow2dBox = true;
+				}
+				else if(g_Setup[client][ViewAnticheats] == true)
+				{
+					ShouldShowAc = true;
 				}
 			}
+		}
+		for(int i = 0; i < (ShouldShow2dBox ? 4 : 12) ; i++)
+		{
+			TE_SetupBeamPoints(g_Zones[Zone][ZoneNumber][pairs[i][0]], g_Zones[Zone][ZoneNumber][pairs[i][1]], g_Properties[Zone][ModelIndex], g_Properties[Zone][HaloIndex], 0, 0, (life < 0.1)?0.1:life, GetConVarFloat(g_hZoneWidth), GetConVarFloat(g_hZoneWidth), 10, 0.0, color, 0);
+			
+			switch(Zone)
+			{
+				case MAIN_START, MAIN_END, BONUS_START, BONUS_END, FREESTYLE:
+				{
+					if(numClients > 0)
+						TE_Send(clients, numClients);
+				}
+				case ANTICHEAT:
+				{	
+					if(numClients > 0 && ShouldShowAc == true)
+						TE_Send(clients, numClients);
+				}
+			}
+		}
+	}			
+	else if(g_bIsCreatingZone)
+	{
+		for(new client = 1; client <= MaxClients; client++)
+			if(IsClientInGame(client) && g_bIsAdmin[client] == true)
+				clients[numClients++] = client;
+		
+		for(int i = 0; i < 12 ; i++)
+		{
+			TE_SetupBeamPoints(g_Zones[Zone][ZoneNumber][pairs[i][0]], g_Zones[Zone][ZoneNumber][pairs[i][1]], g_Properties[Zone][ModelIndex], g_Properties[Zone][HaloIndex], 0, 0, (life < 0.1)?0.1:life, GetConVarFloat(g_hZoneWidth), GetConVarFloat(g_hZoneWidth), 10, 0.0, color, 0);
+							
+			if(numClients > 0)
+				TE_Send(clients, numClients);
 		}
 	}
 }
@@ -1156,7 +1220,7 @@ public Action:Timer_SnapPoint(Handle:timer, any:data)
 	
 	for(new client = 1; client <= MaxClients; client++)
 	{
-		if(IsClientInGame(client) && !IsFakeClient(client) && g_Setup[client][InZonesMenu])
+		if(IsClientInGame(client) && !IsFakeClient(client) && g_bIsCreatingZone)
 		{
 			Entity_GetAbsOrigin(client, fClientPos);
 			GetZoneSetupPosition(client, fSnapPos);
