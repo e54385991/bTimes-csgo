@@ -86,6 +86,9 @@ public OnPluginStart()
 	
 	new Handle:hBotDontShoot = FindConVar("bot_dont_shoot");
 	SetConVarFlags(hBotDontShoot, GetConVarFlags(hBotDontShoot) & ~FCVAR_CHEAT);
+	
+	HookUserMessage(GetUserMessageId("SayText2"), UserMessageHook_SayText2, true);
+	
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -1032,10 +1035,10 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 							}
 							
 							
-							if(GetEntityFlags(g_Ghost[Type][Style]) & FL_ONGROUND)
-								SetEntityMoveType(g_Ghost[Type][Style], MOVETYPE_WALK);
-							else
+							if(GetEntityMoveType(g_Ghost[Type][Style]) != MOVETYPE_NOCLIP)
+							{
 								SetEntityMoveType(g_Ghost[Type][Style], MOVETYPE_NOCLIP);
+							}
 							
 							g_GhostFrame[Type][Style]++;
 						}
@@ -1056,4 +1059,29 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	}
 	
 	return Plugin_Changed;
+}
+
+public Action UserMessageHook_SayText2(UserMsg msg_hd, Handle bf, const int [] players, int playersNum, bool reliable, bool init)
+{
+	char UserMessage[96];
+	Action returnaction = Plugin_Continue;
+
+	if(GetUserMessageType() == UM_Protobuf)
+	{
+		PbReadString(bf, "msg_name", UserMessage, sizeof(UserMessage));
+		if(StrContains(UserMessage, "Name_Change") != -1)
+			returnaction = Plugin_Handled;
+	}
+
+	if(GetUserMessageType() == UM_BitBuf)
+	{
+		BfReadString(bf, UserMessage, sizeof(UserMessage));
+		BfReadString(bf, UserMessage, sizeof(UserMessage));
+		if(StrContains(UserMessage, "Name_Change") != -1)
+		{
+			returnaction = Plugin_Handled;
+		}
+	}
+
+	return returnaction;
 }
