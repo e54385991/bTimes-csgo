@@ -1216,7 +1216,7 @@ public Action:WeaponList(int client, int args)
 	PrintToConsole(client, "\n¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯\n Weapon list:\n !glock               !usp\n !knife               !ak47\n !aug                 !awp\n !bizon               !cz\n !deagle              !dual\n !famas               !fiveseven\n !g3sg1               !galil\n !p2000               !m249\n !m4a4                !m4a1\n !mac10               !mag7\n !mp7                 !mp9\n !negev               !nova\n !p250                !p90\n !sawedoff            !scar\n !sg                  !tec\n !ump                 !xm\n !revolver            !flash\n_____________________________________\n");
 }
 
-public Action SM_ShowTriggers(int client, int args)
+/*public Action SM_ShowTriggers(int client, int args)
 {
 	// Can't use this cmd from within the server console
 	if (!client)
@@ -1236,7 +1236,7 @@ public Action SM_ShowTriggers(int client, int args)
 	
 	transmitTriggers( g_iTransmitCount > 0 );
 	return Plugin_Handled;
-}
+}*/
 
 public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast)
 {
@@ -1314,7 +1314,7 @@ public Action:Event_JoinTeam(Handle:event, const String:name[], bool:dontBroadca
 	return Plugin_Handled;
 }
 
-public void OnClientDisconnect_Post(int client)
+/*public void OnClientDisconnect_Post(int client)
 {
 	// Has this player been still using the feature before he left?
 	if (g_bShowTriggers[client])
@@ -1323,7 +1323,7 @@ public void OnClientDisconnect_Post(int client)
 		--g_iTransmitCount;
 		transmitTriggers( g_iTransmitCount > 0 );
 	}
-}
+}*/
 
 public void OnClientPostAdminCheck(int client)
 {
