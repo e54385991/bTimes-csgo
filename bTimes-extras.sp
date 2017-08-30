@@ -39,13 +39,13 @@ new 	Handle:g_EnableDisMsg,
 
 new Handle:mp_timelimit = INVALID_HANDLE;
 new timelimit;
-
+/*
 #define EF_NODRAW 32
 
 int g_Offset_m_fEffects = -1;
 bool g_bShowTriggers[MAXPLAYERS+1];
 
-int g_iTransmitCount;
+int g_iTransmitCount;*/
 
 public void OnPluginStart()
 {
@@ -59,7 +59,7 @@ public void OnPluginStart()
 
 	// ConVars
 	SetConVar("sv_enablebunnyhopping", "1");
-	SetConVar("sv_maxvelocity", "2147483600");
+	SetConVar("sv_maxvelocity", "21474836");
 	SetConVar("sv_friction", "4");
 	SetConVar("sv_accelerate", "5");
 	SetConVar("bot_dont_shoot", "1");
@@ -70,6 +70,7 @@ public void OnPluginStart()
 	SetConVar("sv_staminajumpcost", "0");
 	SetConVar("sv_staminalandcost", "0");
 	SetConVar("mp_limitteams", "0");
+	SetConVar("sv_full_alltalk", "1");
 	mp_playercashawards = FindConVar("mp_playercashawards");
 	mp_teamcashawards = FindConVar("mp_teamcashawards");
 
@@ -84,13 +85,16 @@ public void OnPluginStart()
 	timelimit = GetConVarInt(mp_timelimit);
 	HookConVarChange(mp_timelimit, ConVarChanged);
 	EditVarFlags("mp_timelimit");
+	RegConsoleCmd("say", HookUserChatMessage);
+	RegConsoleCmd("say_team", HookUserChatMessage);
+
 
 	// Commands
 	RegConsoleCmd("sm_glock", GiveGlock, "Gives player glock");
 	RegConsoleCmd("sm_usp", GiveUsp, "Gives player usp");
 	RegConsoleCmd("sm_knife", GiveKnife, "Gives player knife");
-	RegConsoleCmd("sm_weaponlist", WeaponList, "Show weapon list");
-	RegConsoleCmd("sm_showtriggers", SM_ShowTriggers, "Command to dynamically toggle trigger visibility");
+	//RegConsoleCmd("sm_weaponlist", WeaponList, "Show weapon list");
+	//RegConsoleCmd("sm_showtriggers", SM_ShowTriggers, "Command to dynamically toggle trigger visibility");
 
 	// Admin commands
 	RegAdminCmd("sm_extend", admcmd_extend, ADMFLAG_CHANGEMAP, "sm_extend <minutes> - Extend map time or -short");
@@ -131,7 +135,7 @@ public void OnPluginStart()
 	// Change HP ana ARMOR
 	g_HPOffset = FindSendPropInfo("CCSPlayer", "m_iHealth");
 	g_APOffset = FindSendPropInfo("CCSPlayer", "m_ArmorValue");
-	g_Offset_m_fEffects = FindSendPropInfo("CBaseEntity", "m_fEffects");
+	//g_Offset_m_fEffects = FindSendPropInfo("CBaseEntity", "m_fEffects");
 
 	AutoExecConfig(true, "extras", "timer");
 }
@@ -1242,7 +1246,7 @@ public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast
 	if(StrEqual(cvar_string, "sv_enablebunnyhopping"))
 		SetConVar("sv_enablebunnyhopping", "1");
 	else if(StrEqual(cvar_string, "sv_maxvelocity"))
-		SetConVar("sv_maxvelocity", "2147483600");
+		SetConVar("sv_maxvelocity", "21474836");
 	else if(StrEqual(cvar_string, "sv_friction"))
 		SetConVar("sv_friction", "4");
 	else if(StrEqual(cvar_string, "sv_accelerate"))
@@ -1263,6 +1267,8 @@ public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast
 		SetConVar("sv_staminalandcost", "0");
 	else if(StrEqual(cvar_string, "mp_limitteams"))		
 		SetConVar("mp_limitteams", "0");
+	else if(StrEqual(cvar_string, "sv_full_alltalk"))
+		SetConVar("sv_full_alltalk", "1");
 
 	return Plugin_Handled;
 }
@@ -1373,7 +1379,14 @@ public Action:Event_PlayerDisconnect(Handle:event, const String:name[], bool:don
 	return Plugin_Handled;
 }
 
-void transmitTriggers(bool transmit)
+public Action HookUserChatMessage(int client, int args)
+{
+	if(client == 0) return Plugin_Handled;
+
+	return Plugin_Continue;
+}
+
+/*void transmitTriggers(bool transmit)
 {
 	// Hook only once
 	static bool s_bHooked = false;
@@ -1441,4 +1454,4 @@ public Action Hook_SetTransmit(int entity, int client)
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;
-}
+}*/
