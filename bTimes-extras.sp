@@ -39,13 +39,6 @@ new 	Handle:g_EnableDisMsg,
 
 new Handle:mp_timelimit = INVALID_HANDLE;
 new timelimit;
-/*
-#define EF_NODRAW 32
-
-int g_Offset_m_fEffects = -1;
-bool g_bShowTriggers[MAXPLAYERS+1];
-
-int g_iTransmitCount;*/
 
 public void OnPluginStart()
 {
@@ -94,7 +87,6 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_usp", GiveUsp, "Gives player usp");
 	RegConsoleCmd("sm_knife", GiveKnife, "Gives player knife");
 	//RegConsoleCmd("sm_weaponlist", WeaponList, "Show weapon list");
-	//RegConsoleCmd("sm_showtriggers", SM_ShowTriggers, "Command to dynamically toggle trigger visibility");
 
 	// Admin commands
 	RegAdminCmd("sm_extend", admcmd_extend, ADMFLAG_CHANGEMAP, "sm_extend <minutes> - Extend map time or -short");
@@ -135,7 +127,6 @@ public void OnPluginStart()
 	// Change HP ana ARMOR
 	g_HPOffset = FindSendPropInfo("CCSPlayer", "m_iHealth");
 	g_APOffset = FindSendPropInfo("CCSPlayer", "m_ArmorValue");
-	//g_Offset_m_fEffects = FindSendPropInfo("CBaseEntity", "m_fEffects");
 
 	AutoExecConfig(true, "extras", "timer");
 }
@@ -1216,28 +1207,6 @@ public Action:WeaponList(int client, int args)
 	PrintToConsole(client, "\n¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯\n Weapon list:\n !glock               !usp\n !knife               !ak47\n !aug                 !awp\n !bizon               !cz\n !deagle              !dual\n !famas               !fiveseven\n !g3sg1               !galil\n !p2000               !m249\n !m4a4                !m4a1\n !mac10               !mag7\n !mp7                 !mp9\n !negev               !nova\n !p250                !p90\n !sawedoff            !scar\n !sg                  !tec\n !ump                 !xm\n !revolver            !flash\n_____________________________________\n");
 }
 
-/*public Action SM_ShowTriggers(int client, int args)
-{
-	// Can't use this cmd from within the server console
-	if (!client)
-		return Plugin_Handled;
-	
-	g_bShowTriggers[client] = !g_bShowTriggers[client];
-	
-	if (g_bShowTriggers[client]) 
-	{
-		++g_iTransmitCount;
-		PrintToChat(client, "Showing trigger brushes.");
-	} else 
-	{
-		--g_iTransmitCount;
-		PrintToChat(client, "Stopped showing trigger brushes.");
-	}
-	
-	transmitTriggers( g_iTransmitCount > 0 );
-	return Plugin_Handled;
-}*/
-
 public Action:OnCvarChange(Handle:event, const String:name[], bool:dontbroadcast)
 {
 	decl String:cvar_string[64];
@@ -1314,16 +1283,6 @@ public Action:Event_JoinTeam(Handle:event, const String:name[], bool:dontBroadca
 	return Plugin_Handled;
 }
 
-/*public void OnClientDisconnect_Post(int client)
-{
-	// Has this player been still using the feature before he left?
-	if (g_bShowTriggers[client])
-	{
-		g_bShowTriggers[client] = false;
-		--g_iTransmitCount;
-		transmitTriggers( g_iTransmitCount > 0 );
-	}
-}*/
 
 public void OnClientPostAdminCheck(int client)
 {
@@ -1385,73 +1344,3 @@ public Action HookUserChatMessage(int client, int args)
 
 	return Plugin_Continue;
 }
-
-/*void transmitTriggers(bool transmit)
-{
-	// Hook only once
-	static bool s_bHooked = false;
-	
-	// Have we done this before?
-	if (s_bHooked == transmit)
-		return;
-	
-	// Loop through entities
-	char sBuffer[8];
-	int lastEdictInUse = GetEntityCount();
-	for (int entity = MaxClients+1; entity <= lastEdictInUse; ++entity)
-	{
-		if ( !IsValidEdict(entity) )
-			continue;
-		
-		// Is this entity a trigger?
-		GetEdictClassname(entity, sBuffer, sizeof(sBuffer));
-		if (strcmp(sBuffer, "trigger") != 0)
-			continue;
-		
-		// Is this entity's model a VBSP model?
-		GetEntPropString(entity, Prop_Data, "m_ModelName", sBuffer, 2);
-		if (sBuffer[0] != '*') 
-		{
-			// The entity must have been created by a plugin and assigned some random model.
-			// Skipping in order to avoid console spam.
-			continue;
-		}
-		
-		// Get flags
-		int effectFlags = GetEntData(entity, g_Offset_m_fEffects);
-		int edictFlags = GetEdictFlags(entity);
-		
-		// Determine whether to transmit or not
-		if (transmit) 
-		{
-			effectFlags &= ~EF_NODRAW;
-			edictFlags &= ~FL_EDICT_DONTSEND;
-		} else 
-		{
-			effectFlags |= EF_NODRAW;
-			edictFlags |= FL_EDICT_DONTSEND;
-		}
-		
-		// Apply state changes
-		SetEntData(entity, g_Offset_m_fEffects, effectFlags);
-		ChangeEdictState(entity, g_Offset_m_fEffects);
-		SetEdictFlags(entity, edictFlags);
-		
-		// Should we hook?
-		if (transmit)
-			SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit);
-		else
-			SDKUnhook(entity, SDKHook_SetTransmit, Hook_SetTransmit);
-	}
-	s_bHooked = transmit;
-}
-
-public Action Hook_SetTransmit(int entity, int client)
-{
-	if (!g_bShowTriggers[client])
-	{
-		// I will not display myself to this client :(
-		return Plugin_Handled;
-	}
-	return Plugin_Continue;
-}*/

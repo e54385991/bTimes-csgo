@@ -112,7 +112,7 @@ new    Handle:g_fwdOnTimerFinished_Pre,
 new Handle:g_ConVar_AirAccelerate,
     Handle:g_ConVar_EnableBunnyhopping;
     
-ConVar g_ConVar_Autobunnyhopping;
+ConVar g_ConVar_Autobunnyhopping = null;
 
 // Admin
 new    bool:g_bIsAdmin[MAXPLAYERS + 1];
@@ -121,6 +121,31 @@ bool JumpButtonsFix[65] = false;
 
 float g_flNextSpammingTime[MAXPLAYERS + 1];
 bool g_bIsSpamming[MAXPLAYERS + 1];
+
+char g_finishsounds[][] =
+{
+	"buttons/button16.wav",
+	"player/vo/sas/onarollbrag13.wav",
+	"player/vo/sas/onarollbrag03.wav",
+	"player/vo/phoenix/onarollbrag11.wav",
+	"player/vo/anarchist/onarollbrag13.wav",
+	"player/vo/separatist/onarollbrag01.wav",
+	"player/vo/seal/onarollbrag08.wav"	
+};
+
+char g_wrsounds[][] =
+{
+	"radio/legacy_thats_the_way.wav",
+	"radio/legacy_this_is_my_house.wav",
+	"radio/legacy_very_nice.wav",
+	"radio/legacy_way_to_be_team.wav",
+	"radio/legacy_well_done.wav",
+	"radio/legacy_who_wants_some.wav",
+	"radio/legacy_whoo.wav",
+	"radio/legacy_yea_baby.wav",
+	"radio/legacy_yesss.wav",
+	"radio/legacy_yesss2.wav"
+};
 
 public OnPluginStart()
 {
@@ -177,6 +202,8 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_move", SM_Move, "For getting players out of places they are stuck in");
     RegAdminCmd("sm_reloadstyle", SM_ReloadStyle, ADMFLAG_ROOT, "Reload Style Config.");
     
+    AddCommandListener(Listener_Strafe, "+strafe");
+    
     // Makes FindTarget() work properly
     LoadTranslations("common.phrases");
     
@@ -212,10 +239,9 @@ public OnPluginStart()
     flags &= ~FCVAR_REPLICATED;
     
     SetConVarFlags( g_ConVar_EnableBunnyhopping, flags );
-    
-    g_ConVar_Autobunnyhopping = FindConVar( "sv_autobunnyhopping" );
-    SetConVarFlags(g_ConVar_EnableBunnyhopping, FCVAR_NOTIFY);
-        
+
+    g_ConVar_Autobunnyhopping = FindConVar("sv_autobunnyhopping");
+    g_ConVar_Autobunnyhopping.Flags &= ~FCVAR_NOTIFY;
 }
 
 public OnAllPluginsLoaded()
@@ -242,7 +268,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
     CreateNative("Style_CanReplaySave", Native_Style_CanReplaySave);
     CreateNative("GetTypeStyleFromCommand", Native_GetTypeStyleFromCommand);
     CreateNative("GetClientTimerType", Native_GetClientTimerType);
-    CreateNative("Style_GetConfig", Native_GetStyleConfig);
+    //CreateNative("Style_GetConfig", Native_GetStyleConfig);
     CreateNative("Timer_GetButtons", Native_GetButtons);
     //CreateNative("Timer_OpenStatsMenu", Native_OpenStatsMenu);
     
@@ -264,6 +290,21 @@ public OnMapStart()
 {
     // Set the map id
     GetCurrentMap(g_sMapName, sizeof(g_sMapName));
+    
+    for ( int i = 0; i < sizeof( g_finishsounds ); i++ )
+	{
+		PrecacheSound( g_finishsounds[i] );
+		PrefetchSound( g_finishsounds[i] );
+	}
+    
+    for ( int i = 0; i < sizeof( g_wrsounds ); i++ )
+	{
+		PrecacheSound( g_wrsounds[i] );
+		PrefetchSound( g_wrsounds[i] );
+	}
+    
+    PrecacheSound("buttons/buttons11.wav");
+    PrefetchSound("buttons/buttons11.wav");
     
     if(g_MapList != INVALID_HANDLE)
     {
@@ -420,6 +461,7 @@ public Hook_PreThink(client)
     {
         SetConVarInt(g_ConVar_AirAccelerate, g_StyleConfig[g_Style[client][g_Type[client]]][AirAcceleration]);
         SetConVarBool(g_ConVar_EnableBunnyhopping, g_StyleConfig[g_Style[client][g_Type[client]]][EnableBunnyhopping]);
+        SetConVarBool(g_ConVar_Autobunnyhopping, g_StyleConfig[g_Style[client][g_Type[client]]][Auto]);
     }
 }
 
@@ -1331,6 +1373,22 @@ public Action:SM_Move(client, args)
 	return Plugin_Handled;
 }
 
+public Action Listener_Strafe(int client, const char[] command, int args)
+{
+	if (!client)	return Plugin_Handled;
+	
+	if (IsClientInGame(client) && IsPlayerAlive(client) && g_bTiming[client] == true)
+	{
+		StopTimer(client);
+		CPrintToChat(client, "%s%sDont try to use %s+strafe%s.",
+			g_msg_start,
+			g_msg_textcol,
+			g_msg_varcol,
+			g_msg_textcol);
+	}
+	return Plugin_Handled;
+}
+
 public Action:SetClanTag(Handle:timer, any:data)
 {
     decl String:sTag[32];
@@ -1998,6 +2056,29 @@ public Action:OnTimerFinished_Pre(client, Type, Style)
     return Plugin_Continue;
 }
 
+public OnTimerFinished_Post(client, Float:Time, Type, Style, bool:NewTime, OldPosition, NewPosition)
+{
+	PlayFinishSound(client, NewTime, NewPosition);
+}
+
+PlayFinishSound(client, bool:NewTime, Position)
+{
+	if(NewTime == true)
+	{
+		int sound = GetRandomInt(1, sizeof(g_finishsounds) - 1);
+		ClientCommand(client, "play %s", g_finishsounds[sound]);
+	}
+	else if(NewTime == false)
+	{
+		ClientCommand(client, "Play buttons/button11.wav");
+	}
+	else if(NewTime == true && Position == 1)
+	{
+		int sound = GetRandomInt(1, sizeof(g_wrsounds) - 1);
+		ClientCommand(client, "play %s", g_wrsounds[sound]);
+	}
+}
+
 public Native_FinishTimer(Handle:plugin, numParams)
 {
     new client = GetNativeCell(1);
@@ -2353,7 +2434,7 @@ public Native_GetStyleAbbr(Handle:plugin, numParams)
     
     SetNativeString(2, g_StyleConfig[Style][Name_Short], maxlength);
 }
-
+/*
 public Native_GetStyleConfig(Handle:plugin, numParams)
 {
 	new Style = GetNativeCell(1);
@@ -2367,7 +2448,7 @@ public Native_GetStyleConfig(Handle:plugin, numParams)
 	{
 		return false;
 	}
-}
+}*/
 
 public Native_Style_IsEnabled(Handle:plugin, numParams)
 {

@@ -43,7 +43,6 @@ new 	Handle:g_hGhost[MAX_TYPES][MAX_STYLES],
 	g_GhostPlayerID[MAX_TYPES][MAX_STYLES],
 	Float:g_fGhostTime[MAX_TYPES][MAX_STYLES],
 	Float:g_fPauseTime[MAX_TYPES][MAX_STYLES],
-	g_iBotQuota,
 	bool:g_bGhostLoadedOnce[MAX_TYPES][MAX_STYLES],
 	bool:g_bGhostLoaded[MAX_TYPES][MAX_STYLES],
 	bool:g_bReplayFileExists[MAX_TYPES][MAX_STYLES];
@@ -144,6 +143,10 @@ public Native_GetBotInfo(Handle:plugin, numParams)
 
 public OnMapStart()
 {	
+	ServerCommand("bot_kick all");
+	
+	int bot = 0;
+	
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
 		for(new Style; Style < MAX_STYLES; Style++)
@@ -162,8 +165,11 @@ public OnMapStart()
 				
 				GetStyleName(Style, sStyle, sizeof(sStyle));
 				
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
-				
+				if(Type == 1)
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - N/A", sStyle);
+				else
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - N/A", sStyle);
+				bot++;
 			}
 		}
 	}
@@ -187,6 +193,8 @@ public OnMapStart()
 		bot_controllable.BoolValue = false;
 	}
 	
+	ServerCommand("bot_quota %d", bot);
+	
 	// Timer to check ghost things such as clan tag
 	CreateTimer(0.1, GhostCheck, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
@@ -194,16 +202,6 @@ public OnMapStart()
 public OnZonesLoaded()
 {
 	LoadGhost();
-}
-
-public OnConfigsExecuted()
-{
-	CalculateBotQuota();
-}
-
-public OnUseGhostChanged(Handle:convar, const String:oldValue[], const String:newValue[])
-{
-	CalculateBotQuota();
 }
 
 public OnMapEnd()
@@ -288,7 +286,10 @@ public OnPlayerIDLoaded(client)
 				
 					GetStyleName(Style, sStyle, sizeof(sStyle));
 					
-					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
+					if(Type == 1)
+						FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - %s", sStyle, sTime);
+					else
+						FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sStyle, sTime);
 				}
 			}
 		}
@@ -412,72 +413,8 @@ public Menu_DeleteGhost(Handle:menu, MenuAction:action, param1, param2)
 		CloseHandle(menu);
 }
 
-AssignToReplay(client)
-{
-    new bool:bAssigned;
-    for(new Type; Type < MAX_TYPES; Type++)
-    {
-        for(new Style; Style < MAX_STYLES; Style++)
-        {
-            if(g_Ghost[Type][Style] == 0 || !IsClientConnected(g_Ghost[Type][Style]) || !IsFakeClient(g_Ghost[Type][Style]))
-            {
-                if(Style_CanUseReplay(Style, Type))
-                {
-                    g_Ghost[Type][Style] = client;
-                    bAssigned = true;
-                    break;
-                }
-            }
-        }
-        
-        if(bAssigned == true)
-        {
-            break;
-        }
-    }
-    
-    if(bAssigned == false)
-    {
-        KickClient(client);
-    }
-}
-
 public Action:GhostCheck(Handle:timer, any:data)
-{
-	new iBotQuota = GetConVarInt(g_hBotQuota);
-	
-	if(iBotQuota != g_iBotQuota)
-		ServerCommand("bot_quota %d", g_iBotQuota);
-	
-	for(new client = 1; client <= MaxClients; client++)
-    {
-        if(IsClientConnected(client) && IsFakeClient(client) && !IsClientSourceTV(client))
-        {
-            new bool:bIsReplay;
-            
-            for(new Type; Type < MAX_TYPES; Type++)
-            {
-                for(new Style; Style < MAX_STYLES; Style++)
-                {
-                    if(client == g_Ghost[Type][Style])
-                    {
-                        bIsReplay = true;
-                        break;
-                    }
-                }
-                
-                if(bIsReplay == true)
-                {
-                    break;
-                }
-            }
-            
-            if(!bIsReplay)
-            {
-                AssignToReplay(client);
-            }
-        }
-    }
+{	
     
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
@@ -507,7 +444,7 @@ public Action:GhostCheck(Handle:timer, any:data)
 							}
 							else
 							{
-								CS_SetClientClanTag(g_Ghost[Type][Style], "No Record");
+								CS_SetClientClanTag(g_Ghost[Type][Style], "N/A");
 							}
 						}
 
@@ -636,34 +573,6 @@ void SpecCountToArrays(clients[])
 	}
 }
 
-CalculateBotQuota()
-{
-	g_iBotQuota = 0;
-	
-	for(new Type; Type < MAX_TYPES; Type++)
-	{
-		for(new Style; Style<MAX_STYLES; Style++)
-		{
-			if(Style_CanUseReplay(Style, Type))
-			{
-				g_iBotQuota++;
-				
-				if(!g_Ghost[Type][Style])
-					ServerCommand("bot_add");
-			}
-			else if(g_Ghost[Type][Style])
-				KickClient(g_Ghost[Type][Style]);
-		}
-	}
-	
-	new iBotQuota = GetConVarInt(g_hBotQuota);
-	
-	if(iBotQuota != g_iBotQuota)
-		ServerCommand("bot_quota %d", g_iBotQuota);
-	
-	
-}
-
 LoadGhost()
 {
 	// Rename old version files
@@ -777,7 +686,10 @@ public LoadGhost_Callback(Handle:owner, Handle:hndl, String:error[], any:data)
 				GetTypeName(Type, sType, sizeof(sType), true);
 							
 				GetStyleName(Style, sStyle, sizeof(sStyle));
-				Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
+				if(Type == 1)
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - %s", sStyle, sTime);
+				else
+					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sStyle, sTime);
 			}
 			
 			g_bGhostLoaded[Type][Style] = true;
@@ -893,8 +805,8 @@ DeleteGhost(Type, Style)
 				
 		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
-		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - No record", sType, sStyle);
-		CS_SetClientClanTag(g_Ghost[Type][Style], "No Record");
+		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - N/A", sType, sStyle);
+		CS_SetClientClanTag(g_Ghost[Type][Style], "N/A");
 		FakeClientCommand(g_Ghost[Type][Style], "kill");
 	}
 	
