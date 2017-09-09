@@ -293,18 +293,15 @@ public OnMapStart()
     
     for ( int i = 0; i < sizeof( g_finishsounds ); i++ )
 	{
-		PrecacheSound( g_finishsounds[i] );
-		PrefetchSound( g_finishsounds[i] );
+		FakePrecacheSound( g_finishsounds[i] );
 	}
     
     for ( int i = 0; i < sizeof( g_wrsounds ); i++ )
 	{
-		PrecacheSound( g_wrsounds[i] );
-		PrefetchSound( g_wrsounds[i] );
+		FakePrecacheSound( g_wrsounds[i] );
 	}
     
-    PrecacheSound("buttons/buttons11.wav");
-    PrefetchSound("buttons/buttons11.wav");
+    FakePrecacheSound("buttons/buttons11.wav");
     
     if(g_MapList != INVALID_HANDLE)
     {
@@ -2066,16 +2063,16 @@ PlayFinishSound(client, bool:NewTime, Position)
 	if(NewTime == true)
 	{
 		int sound = GetRandomInt(1, sizeof(g_finishsounds) - 1);
-		ClientCommand(client, "play %s", g_finishsounds[sound]);
+		EmitSoundToClient(client, g_finishsounds[sound]);
 	}
 	else if(NewTime == false)
 	{
-		ClientCommand(client, "Play buttons/button11.wav");
+		EmitSoundToClient(client, "buttons/button11.wav");
 	}
 	else if(NewTime == true && Position == 1)
 	{
 		int sound = GetRandomInt(1, sizeof(g_wrsounds) - 1);
-		ClientCommand(client, "play %s", g_wrsounds[sound]);
+		EmitSoundToAll(client, g_wrsounds[sound]);
 	}
 }
 
@@ -3930,4 +3927,9 @@ stock bool IsSpammingCommand( int client , float warningtime)
 	g_flNextSpammingTime[client] = GetEngineTime() + warningtime;
 	
 	return g_bIsSpamming[client] = false;
+}
+
+stock FakePrecacheSound( const String:szPath[] )
+{
+	AddToStringTable( FindStringTable( "soundprecache" ), szPath );
 }
