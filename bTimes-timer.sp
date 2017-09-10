@@ -2129,8 +2129,7 @@ public Native_FinishTimer(Handle:plugin, numParams)
                 g_ServerRecord[Type][Style] = fTime;
                 
                 Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "SR: %s", sTime); 
-                for (int i = 0; i < 3; i++)
-                {
+                
                     CPrintToChatAll("%s%sNew %s%s %sRecord by %s%N %son %s%s %sin %s%s%s.",
 					g_msg_start,
 					g_msg_textcol,
@@ -2146,7 +2145,7 @@ public Native_FinishTimer(Handle:plugin, numParams)
 					g_msg_varcol,
 					sTime,
 					g_msg_textcol);
-                }
+                
                 
             }
             else
