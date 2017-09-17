@@ -286,7 +286,7 @@ FormatTag(client, String:buffer[], maxlength)
 	
 	ReplaceString(buffer, maxlength, "{green}", "\x04", true);
 	
-	ReplaceString(buffer, maxlength, "{lightreen}", "\x05", true);
+	ReplaceString(buffer, maxlength, "{lightgreen}", "\x05", true);
 	
 	ReplaceString(buffer, maxlength, "{limegreen}", "\x06", true);
 	
