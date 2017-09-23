@@ -55,6 +55,8 @@ new	Handle:g_hGhostStartPauseTime,
 
 ConVar g_hBotQuota;
 
+int g_iBotQuota;
+
 public OnPluginStart()
 {	
 	/*
@@ -142,11 +144,7 @@ public Native_GetBotInfo(Handle:plugin, numParams)
 }
 
 public OnMapStart()
-{	
-	ServerCommand("bot_kick all");
-	
-	int bot = 0;
-	
+{		
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
 		for(new Style; Style < MAX_STYLES; Style++)
@@ -169,7 +167,6 @@ public OnMapStart()
 					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - N/A", sStyle);
 				else
 					FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - N/A", sStyle);
-				bot++;
 			}
 		}
 	}
@@ -192,9 +189,7 @@ public OnMapStart()
 	{
 		bot_controllable.BoolValue = false;
 	}
-	
-	ServerCommand("bot_quota %d", bot);
-	
+		
 	// Timer to check ghost things such as clan tag
 	CreateTimer(0.1, GhostCheck, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
@@ -202,6 +197,45 @@ public OnMapStart()
 public OnZonesLoaded()
 {
 	LoadGhost();
+}
+
+public OnConfigsExecuted()
+{
+	CalculateBotQuota();
+}
+
+public OnUseGhostChanged(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	CalculateBotQuota();
+}
+
+CalculateBotQuota()
+{
+	g_iBotQuota = 0;
+	
+	for(new Type; Type < MAX_TYPES; Type++)
+	{
+		for(new Style; Style<MAX_STYLES; Style++)
+		{
+			if(Style_CanUseReplay(Style, Type))
+			{
+				g_iBotQuota++;
+				
+				if(!g_Ghost[Type][Style])
+					ServerCommand("bot_add");
+			}
+			else if(g_Ghost[Type][Style])
+				KickClient(g_Ghost[Type][Style]);
+		}
+	}
+	
+	new Handle:hBotQuota = FindConVar("bot_quota");
+	new iBotQuota = GetConVarInt(hBotQuota);
+	
+	if(iBotQuota != g_iBotQuota)
+		ServerCommand("bot_quota %d", g_iBotQuota);
+	
+	CloseHandle(hBotQuota);
 }
 
 public OnMapEnd()
