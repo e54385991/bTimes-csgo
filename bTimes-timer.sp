@@ -201,9 +201,7 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_bhop", SM_Auto, "Toggles auto bunnyhop.");
     RegConsoleCmdEx("sm_move", SM_Move, "For getting players out of places they are stuck in");
     RegAdminCmd("sm_reloadstyle", SM_ReloadStyle, ADMFLAG_ROOT, "Reload Style Config.");
-    
-    AddCommandListener(Listener_Strafe, "+strafe");
-    
+        
     // Makes FindTarget() work properly
     LoadTranslations("common.phrases");
     
@@ -1370,22 +1368,6 @@ public Action:SM_Move(client, args)
 	return Plugin_Handled;
 }
 
-public Action Listener_Strafe(int client, const char[] command, int args)
-{
-	if (!client)	return Plugin_Handled;
-	
-	if (IsClientInGame(client) && IsPlayerAlive(client) && g_bTiming[client] == true)
-	{
-		StopTimer(client);
-		CPrintToChat(client, "%s%sDont try to use %s+strafe%s.",
-			g_msg_start,
-			g_msg_textcol,
-			g_msg_varcol,
-			g_msg_textcol);
-	}
-	return Plugin_Handled;
-}
-
 public Action:SetClanTag(Handle:timer, any:data)
 {
     decl String:sTag[32];
@@ -2072,7 +2054,7 @@ PlayFinishSound(client, bool:NewTime, Position)
 	else if(NewTime == true && Position == 1)
 	{
 		int sound = GetRandomInt(1, sizeof(g_wrsounds) - 1);
-		EmitSoundToAll(client, g_wrsounds[sound]);
+		EmitSoundToAll(g_wrsounds[sound]);
 	}
 }
 
@@ -2130,21 +2112,21 @@ public Native_FinishTimer(Handle:plugin, numParams)
                 
                 Format(g_sRecord[Type][Style], sizeof(g_sRecord[][]), "SR: %s", sTime); 
                 
-                    CPrintToChatAll("%s%sNew %s%s %sRecord by %s%N %son %s%s %sin %s%s%s.",
-					g_msg_start,
-					g_msg_textcol,
-					g_msg_varcol,
-					sType,
-					g_msg_textcol,
-					g_msg_varcol,
-					client,
-					g_msg_textcol,
-					g_msg_varcol,
-					sStyle,
-					g_msg_textcol,
-					g_msg_varcol,
-					sTime,
-					g_msg_textcol);
+                CPrintToChatAll("%s%sNew %s%s %sRecord by %s%N %son %s%s %sin %s%s%s.",
+                g_msg_start,
+                g_msg_textcol,
+                g_msg_varcol,
+                sType,
+                g_msg_textcol,
+                g_msg_varcol,
+                client,
+                g_msg_textcol,
+                g_msg_varcol,
+                sStyle,
+                g_msg_textcol,
+                g_msg_varcol,
+                sTime,
+                g_msg_textcol);
                 
                 
             }
@@ -3864,6 +3846,12 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
                             g_msg_textcol);
                     }
                 }
+            }
+            
+            if((vel[0] > 0.0 && (buttons & IN_FORWARD) == 0) || (vel[0] < 0.0 && (buttons & IN_BACK) == 0) ||
+            (vel[1] > 0.0 && (buttons & IN_MOVERIGHT) == 0) || (vel[1] < 0.0 && (buttons & IN_MOVELEFT) == 0))
+            {
+                StopTimer(client);
             }
             
             if(GetEntityMoveType(client) == MOVETYPE_NOCLIP)
