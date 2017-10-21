@@ -57,6 +57,8 @@ ConVar g_hBotQuota;
 
 int g_iBotQuota;
 
+Handle g_hCheckGhost;
+
 public OnPluginStart()
 {	
 	/*
@@ -191,7 +193,7 @@ public OnMapStart()
 	}
 		
 	// Timer to check ghost things such as clan tag
-	CreateTimer(0.1, GhostCheck, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	g_hCheckGhost = CreateTimer(0.1, GhostCheck, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public OnZonesLoaded()
@@ -250,6 +252,9 @@ public OnMapEnd()
 			g_Ghost[Type][Style] = 0;
 		}
 	}
+	
+	if(g_hCheckGhost != INVALID_HANDLE)
+		KillTimer(g_hCheckGhost);
 }
 
 public OnClientPutInServer(client)
@@ -450,6 +455,11 @@ public Menu_DeleteGhost(Handle:menu, MenuAction:action, param1, param2)
 public Action:GhostCheck(Handle:timer, any:data)
 {	
     
+	new iBotQuota = GetConVarInt(g_hBotQuota);
+    
+	if(iBotQuota != g_iBotQuota)
+		ServerCommand("bot_quota %d", g_iBotQuota);
+    
 	for(new Type; Type < MAX_TYPES; Type++)
 	{
 		for(new Style; Style < MAX_STYLES; Style++)
@@ -463,8 +473,6 @@ public Action:GhostCheck(Handle:timer, any:data)
 						
 						new iSize = GetArraySize(g_hGhost[Type][Style]);
 						
-						FakeClientCommand(g_Ghost[Type][Style], "drop");
-
 						decl String:sName[MAX_NAME_LENGTH];
 						GetNameFromPlayerID(g_GhostPlayerID[Type][Style], sName, sizeof(sName));
 
@@ -534,7 +542,7 @@ public Action:GhostCheck(Handle:timer, any:data)
 											new SpecCount[MaxClients+1];
 											SpecCountToArrays(SpecCount);
 											new buttons = GetClientButtons(target);
-											PrintHintText(client, "<font size=\"16\" color=\"#f7b036\">\t\t   Replay</font>\n<font size='16'>Style: %s%sTime: %s\nSpecs: %d\t      %s\t\tSpeed: %.f\n%s", 
+											PrintHintText(client, "<font size=\"16\" color=\"#0089CC\">\t\t   Replay</font>\n<font size='16'>Style: %s%sTime: %s\nSpecs: %d\t      %s\t\tSpeed: %.f\n%s", 
 											sStyle,
 											strlen(sStyle) <= 5 ? "\t\t\t":"\t\t",
 											sTime,
