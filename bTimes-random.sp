@@ -68,8 +68,8 @@ public OnPluginStart()
     g_HideChatTriggers	= CreateConVar("timer_hidechatcmds", "1", "Hide any chat triggers", 0, true, 0.0, true, 1.0);
 
     g_MessageStart     = CreateConVar("timer_msgstart", "{default}[ {green}Timer{default} ] - ", "Sets the start of all timer messages. (Always keep the ^A after the first color code)");
-    g_MessageVar       = CreateConVar("timer_msgvar", "{lightblue}", "Sets the color of variables in timer messages such as player names.");
-    g_MessageText      = CreateConVar("timer_msgtext", "{grey}", "Sets the color of general text in timer messages.");
+    g_MessageVar       = CreateConVar("timer_msgvar", "{green}", "Sets the color of variables in timer messages such as player names.");
+    g_MessageText      = CreateConVar("timer_msgtext", "{default}", "Sets the color of general text in timer messages.");
     
     // Hook specific convars
     HookConVarChange(g_MessageStart, OnMessageStartChanged);
