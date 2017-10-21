@@ -17,12 +17,10 @@ example:
 "timer"
 {
 	"driver"			"mysql"
-	"host"				"URL TO HOST"
-	"database"			"The name given to your database"
-	"user"				"user"
-	"pass"				"pass"
-	//"timeout"			"0"
-	//"port"			"0"
+	"host"				"localhost/ip address"
+	"database"			"databasename e.g.:osdjgoehyioaerhjyoi"
+	"user"				"username e.g.:root"
+	"pass"				"password"
 }
 ```
 
