@@ -3877,20 +3877,8 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
             
             g_fCurrentTime[client] += GetTickInterval();
         }
-        
-        // auto bhop check
-        if(g_bAllowAuto)
-        {
-        	
-            JumpButtonsFix[client] = bool:(buttons & IN_JUMP);
-        	
-            if(g_ConVar_Autobunnyhopping == null)
-            {
-                return;
-            }
 
-            g_ConVar_Autobunnyhopping.BoolValue = (g_StyleConfig[Style][Auto] || (g_StyleConfig[Style][Freestyle] && g_StyleConfig[Style][Freestyle_Auto] && Timer_InsideZone(client, FREESTYLE, 1 << Style) != -1));
-        }
+        JumpButtonsFix[client] = bool:(buttons & IN_JUMP);
         
         if(g_bJumpInStartZone == false)
         {

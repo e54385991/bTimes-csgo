@@ -78,7 +78,6 @@ public OnPluginStart()
 	HookEvent("player_changename", Event_PlayerChangeName, EventHookMode_Pre);
 	
 	// Commands
-	//RegConsoleCmdEx("sm_timerhelper", SM_TimerHelper, "Display some useful commands for player");
 	RegConsoleCmdEx("sm_mostplayed", SM_TopMaps, "Displays the most played maps");
 	RegConsoleCmdEx("sm_lastplayed", SM_LastPlayed, "Shows the last played maps");
 	RegConsoleCmdEx("sm_playtime", SM_Playtime, "Shows the people who played the most.");
@@ -216,6 +215,7 @@ public Action:OnChatMessage(&author, Handle:recipients, String:name[], String:me
 	
 	return Plugin_Continue;
 }
+
 
 public Action:SM_TopMaps(client, args)
 {

@@ -52,8 +52,8 @@ new    Handle:g_MessageStart,
     Handle:g_fwdChatChanged;
     
 new     String:g_msg_start[128] = {""};
-new     String:g_msg_varcol[128] = {"\x07B4D398"};
-new     String:g_msg_textcol[128] = {"\x01"};
+new     String:g_msg_varcol[128] = {"{lightblue}"};
+new     String:g_msg_textcol[128] = {"{default}"};
 
 //new bool:g_TimerGunJump;
 
@@ -82,7 +82,6 @@ public OnPluginStart()
     AutoExecConfig(true, "random", "timer");
     
     // Event hooks
-    //HookEvent("player_spawn", Event_PlayerSpawn);
     HookEvent("player_spawn", Event_PlayerSpawn_Post, EventHookMode_Post);
     HookEvent("player_death", Event_PlayerDeath);
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
@@ -125,7 +124,7 @@ public OnPluginStart()
     AddCommandListener( Command_Radio, "thanks" );
 
     RegConsoleCmdEx("sm_hide", SM_Hide, "Toggles hide");
-    RegConsoleCmdEx("sm_hidewep", SM_Hidewep, "Toogles hide weapon");
+    RegConsoleCmdEx("sm_unhide", SM_Hide, "Toggles hide");
     RegConsoleCmdEx("sm_spec", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_spectate", SM_Spec, "Be a spectator");
     RegConsoleCmdEx("sm_maptime", SM_Maptime, "Shows how long the current map has been on.");
@@ -135,13 +134,7 @@ public OnPluginStart()
     RegConsoleCmdEx("sm_specs", SM_Specinfo, "Shows who is spectating you.");
     RegConsoleCmdEx("sm_speclist", SM_Specinfo, "Shows who is spectating you.");
     RegConsoleCmdEx("sm_spectators", SM_Specinfo, "Shows who is spectating you.");
-    RegConsoleCmdEx("sm_normalspeed", SM_Normalspeed, "Sets your speed to normal speed.");
     RegConsoleCmdEx("sm_speed", SM_Speed, "Changes your speed to the specified value.");
-    RegConsoleCmdEx("sm_setspeed", SM_Speed, "Changes your speed to the specified value.");
-    RegConsoleCmdEx("sm_slow", SM_Slow, "Sets your speed to slow (0.5)");
-    RegConsoleCmdEx("sm_fast", SM_Fast, "Sets your speed to fast (2.0)");
-    RegConsoleCmdEx("sm_lowgrav", SM_Lowgrav, "Lowers your gravity.");
-    RegConsoleCmdEx("sm_normalgrav", SM_Normalgrav, "Sets your gravity to normal.");
     
     // Admin commands
     RegAdminCmd("sm_hudfuck", SM_Hudfuck, ADMFLAG_GENERIC, "Removes a player's hud so they can only leave the server/game through task manager (Use only on players who deserve it)");
@@ -154,7 +147,7 @@ public OnPluginStart()
     
     AddTempEntHook("EffectDispatch", TE_OnEffectDispatch);
     AddTempEntHook("World Decal", TE_OnWorldDecal);
-
+    
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -381,7 +374,7 @@ public Action:CSS_Hook_ShotgunShot(const String:te_name[], const Players[], numC
     TE_WriteVector("m_vecOrigin", vTemp);
     TE_WriteFloat("m_vecAngles[0]", TE_ReadFloat("m_vecAngles[0]"));
     TE_WriteFloat("m_vecAngles[1]", TE_ReadFloat("m_vecAngles[1]"));
-    TE_WriteNum("m_weapon", TE_ReadNum("m_weapon"));
+    TE_WriteNum("m_iWeaponID", TE_ReadNum("m_iWeaponID"));
     TE_WriteNum("m_iMode", TE_ReadNum("m_iMode"));
     TE_WriteNum("m_iSeed", TE_ReadNum("m_iSeed"));
     TE_WriteNum("m_iPlayer", TE_ReadNum("m_iPlayer"));
@@ -486,7 +479,7 @@ public Action:KillEntity(Handle:timer, any:ref)
         }
     }
 }
-
+ 
 public Action:Event_PlayerSpawn_Post(Handle:event, const String:name[], bool:dontBroadcast)
 {
     new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -494,10 +487,6 @@ public Action:Event_PlayerSpawn_Post(Handle:event, const String:name[], bool:don
     // no block
     SetEntProp(client, Prop_Data, "m_CollisionGroup", 2);
     
-
-    SetEntProp(client, Prop_Data, "m_bDrawViewmodel", g_Settings[client] & HIDE_WEAPONS ? '0' : 1);
-        
-        
     return Plugin_Continue;
 }
 
@@ -732,7 +721,7 @@ public Menu_SpecInfo(Handle:menu, MenuAction:action, param1, param2)
 
 public Action Command_Radio(int client, const char[] command, int args)
 {
-    return Plugin_Continue;
+    return Plugin_Handled;
 }
 
 // Hide other players
@@ -756,28 +745,6 @@ public Action:SM_Hide(client, args)
     }
     
     return Plugin_Handled;
-}
-
-public Action:SM_Hidewep(client, args)
-{
-	SetClientSettings(client, GetClientSettings(client) ^ HIDE_WEAPONS);
-	
-	if(g_Settings[client] & HIDE_WEAPONS)
-	{
-		SetEntProp(client, Prop_Data, "m_bDrawViewmodel", 0);
-		CPrintToChat(client, "%s%sYour weapon is now %sinvisible",
-            g_msg_start,
-            g_msg_textcol,
-            g_msg_varcol);
-	}	
-	else
-	{
-		SetEntProp(client, Prop_Data, "m_bDrawViewmodel", 1);
-		CPrintToChat(client, "%s%sYour weapon is now %svisible",
-            g_msg_start,
-            g_msg_textcol,
-            g_msg_varcol);
-	}
 }
 
 // Spectate command
@@ -1029,68 +996,23 @@ public Action:SM_Speed(client, args)
     return Plugin_Handled;
 }
 
-public Action:SM_Fast(client, args)
-{
-    StopTimer(client);
-    
-    // Set the speed
-    SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 2.0);
-    
-    return Plugin_Handled;
-}
-
-public Action:SM_Slow(client, args)
-{
-    StopTimer(client);
-    
-    // Set the speed
-    SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 0.5);
-    
-    return Plugin_Handled;
-}
-
-public Action:SM_Normalspeed(client, args)
-{
-    StopTimer(client);
-    
-    // Set the speed
-    SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
-    
-    return Plugin_Handled;
-}
-
-public Action:SM_Lowgrav(client, args)
-{
-    StopTimer(client);
-    
-    SetEntityGravity(client, 0.6);
-    
-    CPrintToChat(client, "%s%sUsing low gravity. Use !normalgrav to switch back to normal gravity.",
-        g_msg_start,
-        g_msg_textcol);
-}
-
-public Action:SM_Normalgrav(client, args)
-{
-    SetEntityGravity(client, 0.0);
-    
-    CPrintToChat(client, "%s%sUsing normal gravity.",
-        g_msg_start,
-        g_msg_textcol);
-}
-
 public Action:Hook_SetTransmit(entity, client)
 {
-	
-    if(entity > 0 && entity <= MaxClients || client == entity)
-        return Plugin_Handled;
-
-    if(g_Settings[client] & HIDE_PLAYERS)
-        return Plugin_Handled;
+    if(client != entity && (0 < entity <= MaxClients) && IsPlayerAlive(client))
+    {
+        if(g_Settings[client] & HIDE_PLAYERS)
+            return Plugin_Handled;
         
-    if(!IsPlayerAlive(client) && GetClientObserverTarget(client) == entity)
-        return Plugin_Handled;
-
+        //if(GetEntityMoveType(entity) == MOVETYPE_NOCLIP && !IsFakeClient(entity))
+        //    return Plugin_Handled;
+        
+        if(!IsPlayerAlive(entity))
+            return Plugin_Handled;
+        
+        if(IsPlayerAlive(client) && IsFakeClient(entity))
+            return Plugin_Handled;
+    }
+    
     return Plugin_Continue;
 }
 
@@ -1199,9 +1121,4 @@ public Native_SetClientSettings(Handle:plugin, numParams)
         IntToString(g_Settings[client], sSettings, sizeof(sSettings));
         SetClientCookie(client, g_hSettingsCookie, sSettings);
     }
-}
-
-stock int GetClientObserverTarget(int client)
-{
-    return GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 }

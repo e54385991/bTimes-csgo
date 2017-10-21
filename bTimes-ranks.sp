@@ -211,7 +211,7 @@ public OnStylesLoaded()
 	RegConsoleCmdPerStyle("mapsleft", SM_Mapsleft, "Show maps left for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("mapsdone", SM_Mapsdone, "Show maps done for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("top", SM_Top, "Show list of top players for {Type} timer on {Style} style.");
-	RegConsoleCmdPerStyle("topwr", SM_TopServerRecord, "Show who has the most records for {Type} timer on {Style} style.");
+	RegConsoleCmdPerStyle("topwr", SM_TopWorldRecord, "Show who has the most records for {Type} timer on {Style} style.");
 	RegConsoleCmdPerStyle("stats", SM_Stats, "Shows a player's stats for {Type} timer on {Style} style.");
 	
 	for(new Type; Type < MAX_TYPES; Type++)
@@ -708,7 +708,7 @@ OpenStatsMenu(client, PlayerID, Type, Style)
 		new Float:fPoints = GetArrayCell(g_hRanksPoints[Type][Style], Rank - 1);
 		
 		decl String:sDisplay[256];
-		FormatEx(sDisplay, sizeof(sDisplay), "%s [%s]\nServer Records: %d\n \nMaps done: %d / %d (%.1f%%)\n \nRank: %d / %d (%d Pts.)\n--------------------------------",
+		FormatEx(sDisplay, sizeof(sDisplay), "%s [%s]\nWorld Records: %d\n \nMaps done: %d / %d (%.1f%%)\n \nRank: %d / %d (%d Pts.)\n--------------------------------",
 			sType,
 			sStyle,
 			RecordCount,
@@ -823,7 +823,7 @@ public Native_OpenStatsMenu(Handle:plugin, numParams)
 	OpenStatsMenu(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), GetNativeCell(4));
 }
 
-public Action:SM_TopServerRecord(client, args)
+public Action:SM_TopWorldRecord(client, args)
 {
 	new Type, Style;
 	
@@ -839,7 +839,7 @@ public Action:SM_TopServerRecord(client, args)
 		if(iSize > 0)
 		{
 			new Handle:menu = CreateMenu(Menu_RecordCount);
-			SetMenuTitle(menu, "Server Record Count [%s] - [%s]", sType, sStyle);
+			SetMenuTitle(menu, "World Record Count [%s] - [%s]", sType, sStyle);
 			
 			new PlayerID, RecordCount, String:sInfo[32], String:sDisplay[64], String:sName[MAX_NAME_LENGTH];
 			for(new idx; idx < iSize; idx++)
@@ -855,16 +855,11 @@ public Action:SM_TopServerRecord(client, args)
 				AddMenuItem(menu, sInfo, sDisplay);
 			}
 			
-			if(GetMenuItemCount(menu) <= 7)
-			{
-				SetMenuPagination(menu, MENU_NO_PAGINATION);
-			}
-			
 			DisplayMenu(menu, client, MENU_TIME_FOREVER);
 		}
 		else
 		{
-			CPrintToChat(client, "%s%s[%s%s%s] - [%s%s%s] There are no server records on any map.",
+			CPrintToChat(client, "%s%s[%s%s%s] - [%s%s%s] There are no world records on any map.",
 				g_msg_start,
 				g_msg_textcol,
 				g_msg_varcol,
