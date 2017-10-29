@@ -815,7 +815,11 @@ SaveGhost(client, Float:Time, Type, Style)
 	GetTypeName(Type, sType, sizeof(sType), true);
 				
 	GetStyleName(Style, sStyle, sizeof(sStyle));
-	Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - %s", sType, sStyle, sTime);
+	
+	if(Type == 1)
+		FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - %s", sStyle, sTime);
+	else
+		FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - %s", sStyle, sTime);
 	
 	g_bReplayFileExists[Type][Style] = true;
 	
@@ -848,7 +852,11 @@ DeleteGhost(Type, Style)
 				
 		GetStyleName(Style, sStyle, sizeof(sStyle));
 		
-		Format(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s %s - N/A", sType, sStyle);
+		if(Type == 1)
+			FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "Bonus %s - N/A", sStyle);
+		else
+			FormatEx(g_sGhost[Type][Style], sizeof(g_sGhost[][]), "%s - N/A", sStyle);
+			
 		CS_SetClientClanTag(g_Ghost[Type][Style], "N/A");
 		FakeClientCommand(g_Ghost[Type][Style], "kill");
 	}
