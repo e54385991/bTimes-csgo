@@ -14,7 +14,6 @@ public Plugin:myinfo =
 #include <sourcemod>
 #include <sdkhooks>
 #include <sdktools>
-#include <smlib/weapons>
 #include <smlib/entities>
 #include <cstrike>
 #include <bTimes-timer>
@@ -186,6 +185,8 @@ public OnMapStart()
 	}
 	
 	ConVar bot_controllable = FindConVar("bot_controllable");
+	
+	CalculateBotQuota();
 	
 	if(bot_controllable != null)
 	{
